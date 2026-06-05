@@ -120,7 +120,7 @@ onMounted(search);
 .major { background: #fff; border: 1px solid var(--border-soft); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow-sm); }
 .m-name { font-size: 14.5px; font-weight: 700; color: var(--ink); }
 .m-meta { display: flex; gap: 8px; align-items: center; margin-top: 7px; flex-wrap: wrap; }
-.m-tag { background: var(--primary-soft); color: var(--primary-deep); font-size: 11px; padding: 2px 9px; border-radius: 6px; font-weight: 700; }
+.m-tag { background: var(--blue-soft); color: var(--blue-deep); font-size: 11px; padding: 2px 9px; border-radius: 6px; font-weight: 700; }
 .m-sub { font-size: 12px; color: var(--text-2); }
 .m-deg { font-size: 11px; color: var(--muted); }
 .empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 40px; font-size: 13px; }
@@ -130,11 +130,11 @@ onMounted(search);
 .confuse { display: flex; flex-direction: column; gap: 8px; }
 .cf-row { display: grid; grid-template-columns: 130px 54px 1fr; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--border-soft); border-radius: 11px; padding: 11px 14px; box-shadow: var(--shadow-sm); }
 .cf-a { font-weight: 700; color: var(--ink); font-size: 13.5px; }
-.cf-arrow { font-size: 11px; color: var(--vermilion); font-weight: 700; text-align: center; }
+.cf-arrow { font-size: 11px; color: var(--blue); font-weight: 700; text-align: center; }
 .cf-b { font-size: 12.8px; color: var(--text-2); line-height: 1.7; }
 .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
 .th-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow-sm); }
-.th-card h4 { margin: 0 0 7px; color: var(--red-deep); font-size: 14px; }
+.th-card h4 { margin: 0 0 7px; color: var(--blue-deep); font-size: 14px; }
 .th-card p { margin: 0; font-size: 12.8px; color: var(--text-2); line-height: 1.75; }
 @media (max-width: 720px) { .cats { grid-template-columns: repeat(4, 1fr); } .major-list { grid-template-columns: 1fr; } .three { grid-template-columns: 1fr; } .cf-row { grid-template-columns: 100px 40px 1fr; } }
 </style>

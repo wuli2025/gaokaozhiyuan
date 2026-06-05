@@ -243,19 +243,18 @@ const pageInfo = computed(() => {
 
     <!-- ══════════ 结果工作台 ══════════ -->
     <div v-else class="board" :class="{ busy: loading }">
-      <header class="hero">
-        <div class="hero-left">
-          <div class="hero-title"><span class="ai">智能</span>填报</div>
-          <div class="hero-meta">
-            <span class="hm">{{ profile.province }}</span>
-            <span class="dot">·</span>
-            <span class="hm">{{ profile.track }}{{ profile.reselect.length ? "+" + profile.reselect.join("") : "" }}</span>
-            <span class="dot">·</span>
-            <span class="hm" v-if="profile.score">{{ profile.score }} 分</span>
-            <span class="hm rank">位次 ≈ {{ profile.rank?.toLocaleString() }}</span>
-          </div>
+      <header class="hero pk-hero">
+        <div class="hero-eyebrow">★ POLARIS · 智能填报 · 位次法 · 冲 / 稳 / 保</div>
+        <div class="hero-row">
+          <h1 class="hero-title">智能<span class="lite">填报</span></h1>
+          <button class="edit-btn" @click="editing = true; draftScore = profile.score">修改成绩</button>
         </div>
-        <button class="edit-btn" @click="editing = true; draftScore = profile.score">修改成绩</button>
+        <div class="hero-meta">
+          <span class="pk-chip">{{ profile.province }}</span>
+          <span class="pk-chip">{{ profile.track }}{{ profile.reselect.length ? " · " + profile.reselect.join(" ") : "" }}</span>
+          <span class="pk-chip" v-if="profile.score"><b>{{ profile.score }}</b> 分</span>
+          <span class="pk-chip rank">位次 ≈ <b>{{ profile.rank?.toLocaleString() }}</b></span>
+        </div>
       </header>
 
       <section class="dashboard" v-if="stats">
@@ -438,18 +437,15 @@ const pageInfo = computed(() => {
 </template>
 
 <style scoped>
-.match-root { height: 100vh; overflow-y: auto; background: var(--bg); }
-.ai { color: #c0392b; }
+.match-root { height: 100vh; overflow-y: auto; background: transparent; }
+.ai { color: var(--primary); }
 
 /* ─── 输入面板 ─── */
 .input-stage {
   min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px;
-  background:
-    radial-gradient(900px 480px at 15% -10%, #eef3fb 0%, transparent 55%),
-    radial-gradient(760px 420px at 100% 0%, #fdeeec 0%, transparent 50%),
-    var(--bg);
 }
-.input-card { width: 100%; max-width: 480px; background: #fff; border: 1px solid var(--border-soft); border-radius: 22px; padding: 36px 34px; box-shadow: var(--shadow-lg); }
+.input-card { position: relative; width: 100%; max-width: 480px; background: var(--panel); border: 1px solid var(--border-soft); border-radius: 22px; padding: 38px 34px 34px; box-shadow: var(--shadow-lg); overflow: hidden; }
+.input-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--grad); }
 .ic-brand { font-family: var(--serif); font-size: 30px; font-weight: 800; letter-spacing: 1px; color: var(--ink); }
 .ic-sub { color: var(--muted); font-size: 13px; margin: 8px 0 22px; }
 .ic-label { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-2); margin: 18px 0 9px; }
@@ -466,22 +462,29 @@ const pageInfo = computed(() => {
 .score-input:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .score-input input { flex: 1; border: none; outline: none; font-size: 26px; font-weight: 800; color: var(--ink); padding: 8px 0; background: transparent; }
 .score-input .unit { color: var(--muted); font-size: 15px; }
-.cta { width: 100%; margin-top: 22px; padding: 14px; border: none; border-radius: 13px; background: linear-gradient(120deg, #c0392b, #e0584a); color: #fff; font-size: 15.5px; font-weight: 800; letter-spacing: 2px; box-shadow: 0 8px 22px -8px rgba(192,57,43,.6); transition: .18s; }
-.cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 26px -8px rgba(192,57,43,.7); }
+.cta { width: 100%; margin-top: 22px; padding: 14px; border: none; border-radius: 13px; background: var(--grad); color: #fff; font-size: 15.5px; font-weight: 800; letter-spacing: 2px; box-shadow: 0 10px 24px -8px var(--glow); transition: .18s; }
+.cta:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 30px -8px var(--glow); filter: brightness(1.04); }
 .cta:disabled { opacity: .6; }
 .ic-foot { text-align: center; color: var(--dim); font-size: 11.5px; margin-top: 14px; }
 .err { color: var(--vermilion); font-size: 12.5px; margin: 10px 0 0; }
 
 /* ─── 工作台 ─── */
-.board { max-width: 1080px; margin: 0 auto; padding: 0 24px 60px; }
+.board { max-width: 1080px; margin: 0 auto; padding: 22px 24px 60px; }
 .board.busy { opacity: .82; }
-.hero { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 18px 0 14px; background: linear-gradient(var(--bg) 70%, transparent); }
-.hero-title { font-family: var(--serif); font-size: 22px; font-weight: 800; color: var(--ink); }
-.hero-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-size: 13px; color: var(--text-2); flex-wrap: wrap; }
-.hero-meta .dot { color: var(--dim); }
-.hero-meta .rank { background: var(--primary-soft); color: var(--primary-deep); padding: 2px 10px; border-radius: 999px; font-weight: 700; margin-left: 4px; }
-.edit-btn { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 8px 16px; font-size: 13px; color: var(--text-2); font-weight: 600; }
-.edit-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+/* ─── 鎏金 hero band（首屏门面，.pk-hero 提供深色暖调+流光+网格） ─── */
+.hero { margin-bottom: 18px; }
+.hero-eyebrow { font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .28em; text-transform: uppercase; color: var(--amber); margin-bottom: 12px; }
+.hero-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.hero-title { margin: 0; font-family: var(--serif); font-size: 30px; font-weight: 800; letter-spacing: 1px; line-height: 1.2;
+  background: linear-gradient(100deg, #fff 0%, #ffd9a8 42%, #ff9b6e 78%, #ffcf8e 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 14px rgba(255, 120, 70, .28)); }
+.hero-title .lite { -webkit-text-fill-color: var(--amber); color: var(--amber); }
+.hero-meta { display: flex; align-items: center; gap: 9px; margin-top: 16px; flex-wrap: wrap; }
+.hero-meta .pk-chip.rank { background: rgba(255, 177, 77, .16); border-color: rgba(255, 177, 77, .35); color: #ffe6cf; }
+.edit-btn { flex: none; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 214, 180, .22); border-radius: 999px; padding: 8px 18px; font-size: 12.5px; color: #f3dcc9; font-weight: 600; backdrop-filter: blur(8px); transition: .16s; }
+.edit-btn:hover { background: rgba(255, 255, 255, .16); color: #fff; border-color: var(--amber); }
 
 .dashboard { display: grid; grid-template-columns: 360px 1fr; gap: 22px; align-items: center; background: #fff; border: 1px solid var(--border-soft); border-radius: 20px; padding: 26px 28px; box-shadow: var(--shadow); margin-bottom: 18px; }
 .donut-wrap { display: flex; align-items: center; gap: 18px; }
@@ -497,8 +500,10 @@ const pageInfo = computed(() => {
 .leg-l { font-size: 12.5px; color: var(--text-2); }
 
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border-soft); border-radius: 14px; overflow: hidden; }
-.sg-cell { background: #fff; padding: 16px 10px; text-align: center; }
-.sg-n { font-size: 24px; font-weight: 800; color: var(--ink); font-family: var(--serif); line-height: 1; }
+.sg-cell { background: var(--panel); padding: 16px 10px; text-align: center; transition: background .15s; }
+.sg-cell:hover { background: var(--bg-soft); }
+.sg-n { font-size: 25px; font-weight: 800; font-family: var(--serif); line-height: 1;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .sg-l { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
 
 /* ─── 筛选 ─── */

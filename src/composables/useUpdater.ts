@@ -26,7 +26,7 @@ export const dialogDismissed = ref(false);
 let pending: Update | null = null;
 let autoChecked = false;
 
-async function ensureCurrentVersion(): Promise<void> {
+export async function ensureCurrentVersion(): Promise<void> {
   if (currentVersion.value) return;
   try {
     currentVersion.value = await getVersion();

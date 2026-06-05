@@ -1,27 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from "vue";
 import {
-  Puzzle,
-  Search,
   ChevronDown,
   X,
   ArrowRight,
   Square,
-  Sparkles,
-  Globe,
   Wrench,
   FileText,
   Table,
-  AudioLines,
-  Clapperboard,
   Image as ImageIcon,
-  Ghost,
   FileCode,
   File as FileIcon,
   ExternalLink,
   Paperclip,
   LoaderCircle,
-  Target,
   Ellipsis,
   PencilLine,
   Pin,
@@ -29,25 +21,20 @@ import {
   Copy,
   Trash2,
   Check,
-  Star,
   PanelRightOpen,
   PanelRightClose,
 } from "@lucide/vue";
 import {
   chat,
   convApi,
-  skills as skillsApi,
   type PermissionMode,
-  type Skill,
   type AttachedFile,
   type Message,
 } from "../tauri";
 import { marked } from "marked";
 import { useAppStore } from "../stores/app";
-import { useSkillsStore } from "../stores/skills";
 import { useArtifactsStore } from "../stores/artifacts";
 import { useChatStore, type Bubble } from "../stores/chat";
-import { useWorkflowsStore } from "../stores/workflows";
 import { useFileDrop } from "../composables/useFileDrop";
 
 function fileName(path: string): string {
@@ -72,10 +59,8 @@ function artifactIcon(path: string) {
 }
 
 const app = useAppStore();
-const skillsStore = useSkillsStore();
 const artifactsStore = useArtifactsStore();
 const chatStore = useChatStore();
-const workflowsStore = useWorkflowsStore();
 
 /** 点击成品文件 chip → 展开右侧抽屉并预览 */
 function openArtifact(path: string) {
@@ -87,12 +72,6 @@ const input = ref("");
 // 多开：当前对话的气泡 / 运行态来自 chat store（按对话 id 维护，切走不丢、后台续流）
 const bubbles = computed(() => chatStore.bubblesFor(app.currentConvId));
 const sending = computed(() => chatStore.isSending(app.currentConvId));
-
-// 当前项目是否为默认赠送的「毛主席」项目 —— 决定空状态彩蛋（与后端 MAO_PROJECT_NAME 一致）
-const currentProjectName = computed(
-  () => app.projects.find((p) => p.id === app.currentProjectId)?.name || ""
-);
-const isMaoProject = computed(() => currentProjectName.value === "毛主席");
 
 // ─────────── 回复渲染：markdown + 终端码清洗 ───────────
 // 后端发来的是干净 markdown，这里渲染成 HTML（剥掉极少数残留的 ANSI 控制码）。
@@ -192,15 +171,7 @@ async function copyTurn(t: Turn) {
 }
 const showPermDropdown = ref(false);
 const permMode = ref<PermissionMode>("manual");
-const showSkillPanel = ref(false);
-const skillSearch = ref("");
-const skillsList = ref<Skill[]>([]);
 const scrollEl = ref<HTMLDivElement | null>(null);
-
-// ─────────── 目标模式 (Claude Code goal) ───────────
-// 开启后，主输入框里写的内容即「完成条件」：Claude 会持续推进直到达成，
-// 不中途收尾、不反问。开关随会话持续生效（贴近 session-scoped /goal），手动关闭。
-const goalMode = ref(false);
 const inputEl = ref<HTMLTextAreaElement | null>(null);
 
 // 输入框高度随内容自动增长（仿豆包）：先归零再按 scrollHeight 撑高，到 CSS max-height 后内部滚动。
@@ -213,38 +184,6 @@ function autoGrow() {
 // 内容变化（手输 / 程序填入 / 发送清空）都重算高度
 watch(input, () => nextTick(autoGrow));
 onMounted(() => nextTick(autoGrow));
-
-function toggleGoal() {
-  goalMode.value = !goalMode.value;
-  if (goalMode.value) nextTick(() => inputEl.value?.focus());
-}
-
-// ─────────── 请教毛主席（模式开关，行为同「目标模式」） ───────────
-// 激活后，下一次 Enter/点发送都按「请教毛主席」走：注入毛选式分析指令、
-// 调资料库取证、生成标来源 HTML。不再是「点了立即发」，需要先写问题再发送。
-const maoMode = ref(false);
-function toggleMao() {
-  maoMode.value = !maoMode.value;
-  if (maoMode.value) nextTick(() => inputEl.value?.focus());
-}
-
-// ─────────── 工作流包「使用」→ 填入输入框 ───────────
-// 右侧「工作流包」点「使用」时，store 发来拼装好的提示词：已有内容则追加，否则填入；
-// 随后聚焦并把光标移到末尾。带 nonce 以便重复使用同一包也能触发。
-function applyInsert(req: { text: string; n: number } | null | undefined) {
-  if (!req || !req.text) return;
-  const cur = input.value.trimEnd();
-  input.value = cur ? `${cur}\n\n${req.text}` : req.text;
-  workflowsStore.clearInsert();
-  nextTick(() => {
-    const el = inputEl.value;
-    if (!el) return;
-    el.focus();
-    el.selectionStart = el.selectionEnd = el.value.length;
-    el.scrollTop = el.scrollHeight;
-  });
-}
-watch(() => workflowsStore.insertRequest, applyInsert);
 
 // ─────────── 拖拽上传附件到当前对话 ───────────
 const attachments = ref<AttachedFile[]>([]);
@@ -311,66 +250,6 @@ const permLabel: Record<PermissionMode, string> = {
   deny: "拒绝授权",
 };
 
-// Load skills for panel
-async function loadSkills() {
-  try {
-    skillsList.value = await skillsApi.list();
-  } catch {
-    skillsList.value = [
-      {
-        id: "deep-research",
-        name: "深度搜索",
-        description:
-          "使用 LLM 大规模联网搜索相关内容，自动检索、汇总、交叉验证多来源信息",
-        source: "third-party",
-      },
-      {
-        id: "skill-creator",
-        name: "Skill 创建向导",
-        description: "引导用户创建自定义 Skill，自动生成模板和配置文件",
-        source: "official",
-      },
-    ];
-  }
-}
-
-function filteredSkills() {
-  if (!skillSearch.value.trim()) return skillsList.value;
-  const q = skillSearch.value.toLowerCase();
-  return skillsList.value.filter(
-    (s) =>
-      s.name.toLowerCase().includes(q) ||
-      s.description.toLowerCase().includes(q)
-  );
-}
-
-function skillIcon(id: string) {
-  const map: Record<string, any> = {
-    "deep-research": Globe,
-    "skill-creator": Wrench,
-    pdf: FileText,
-    xlsx: Table,
-    "edge-tts": AudioLines,
-    hyperframes: Clapperboard,
-    "web-search": Search,
-    "image-gen": ImageIcon,
-    "cloak-browser": Ghost,
-  };
-  return map[id] ?? Sparkles;
-}
-
-function goToSkillCenter() {
-  showSkillPanel.value = false;
-}
-
-function toggleSkill(id: string) {
-  skillsStore.toggle(id);
-  showSkillPanel.value = false;
-}
-
-function clearActiveSkill(id: string) {
-  skillsStore.remove(id);
-}
 
 function scrollToBottom() {
   nextTick(() => {
@@ -392,10 +271,7 @@ watch(bubbles, scrollToBottom, { deep: true });
 onMounted(async () => {
   await chatStore.init(); // app 级流式监听只注册一次，按 conversationId 路由
   await chatStore.loadHistory(app.currentConvId);
-  await loadSkills();
   scrollToBottom();
-  // 若在别的视图点了工作流包「使用」才切来对话，挂载时补消费一次
-  applyInsert(workflowsStore.insertRequest);
 });
 
 async function ensureConversation(): Promise<string | null> {
@@ -430,21 +306,13 @@ async function send() {
     prompt += `\n\n---\n[附件]（用户拖拽上传，可用 Read 等工具读取）：\n${lines}`;
   }
 
-  // 气泡里给「请教毛主席」一个可见标记
-  const consult = maoMode.value;
-  const display = consult
-    ? `请教毛主席：${text || "（仅附件）"}`
-    : text || "（仅附件）";
+  const display = text || "（仅附件）";
 
   input.value = "";
   attachments.value = [];
   // 交给 chat store：推 user 气泡 + 调后端 + 记录 reqId/sending（按对话 id，多开）
   await chatStore.send(convId, prompt, display, attached, {
     permissionMode: permMode.value,
-    skillIds: Array.from(skillsStore.enabledSkills),
-    // 目标模式下，本条输入框内容即完成条件
-    goal: goalMode.value && text ? text : undefined,
-    consultMao: consult || undefined,
   });
 }
 
@@ -686,23 +554,10 @@ async function deleteCurrentConv() {
 
     <div class="messages" ref="scrollEl">
       <div v-if="renderTurns.length === 0" class="hero-wrap">
-        <!-- 毛主席项目彩蛋：未对话前的空白中部 -->
-        <template v-if="isMaoProject">
-          <div class="mao-hero">小同志，你好。</div>
-          <div class="mao-desc">
-            这里是<strong>毛主席资料库</strong>。我已经把《毛泽东选集》《毛泽东全集》等
-            资料装进了你本地的知识库 —— 你可以在「浏览」里随时翻看。有什么问题，尽管向我提；
-            点对话框下的<strong>「请教毛主席」</strong>，我就用实事求是、矛盾分析的法子，
-            给你客观地分析分析。
-          </div>
-          <div class="mao-slogan">为建设共产主义事业而奋斗</div>
-        </template>
-        <template v-else>
-          <div class="hero">你说,北极星画</div>
-          <div class="hero-sub">
-            本地优先 · 调用 Claude Code · 维基知识库 KB-first 召回
-          </div>
-        </template>
+        <div class="hero">你说,北极星画</div>
+        <div class="hero-sub">
+          本地优先 · 调用 Claude Code · 维基知识库 KB-first 召回
+        </div>
       </div>
 
       <div v-for="t in renderTurns" :key="t.key" class="turn">
@@ -798,61 +653,8 @@ async function deleteCurrentConv() {
 
     <!-- 输入区域 -->
     <div class="input-area">
-      <!-- 技能选择弹窗 -->
-      <div v-if="showSkillPanel" class="skill-panel">
-        <div class="skill-panel-head">
-          <span class="skill-panel-title">选择技能</span>
-          <button class="skill-panel-close" @click="showSkillPanel = false">
-            <X :size="14" :stroke-width="2" />
-          </button>
-        </div>
-        <div class="skill-panel-search">
-          <Search :size="14" :stroke-width="1.8" class="sp-search-icon" />
-          <input v-model="skillSearch" placeholder="搜索技能..." type="text" />
-        </div>
-        <div class="skill-panel-list">
-          <div
-            v-for="s in filteredSkills()"
-            :key="s.id"
-            class="skill-panel-item"
-            :class="{ active: skillsStore.has(s.id) }"
-            @click="toggleSkill(s.id)"
-          >
-            <component
-              :is="skillIcon(s.id)"
-              :size="16"
-              :stroke-width="1.6"
-              class="sp-item-icon"
-            />
-            <div class="sp-item-info">
-              <div class="sp-item-name">{{ s.name }}</div>
-              <div class="sp-item-desc">{{ s.description }}</div>
-            </div>
-          </div>
-        </div>
-        <div class="skill-panel-foot">
-          <button class="sp-manage" @click="goToSkillCenter">
-            <ArrowRight :size="12" :stroke-width="2" />
-            <span>探索和管理技能</span>
-          </button>
-        </div>
-      </div>
-
       <!-- 输入卡片 -->
-      <div class="input-card" :class="{ 'goal-on': goalMode }">
-        <!-- Skill 标签 -->
-        <div v-if="skillsStore.enabledSkills.size > 0" class="skill-tags">
-          <div
-            v-for="s in skillsList.filter((x) => skillsStore.has(x.id))"
-            :key="s.id"
-            class="skill-tag"
-            @click="clearActiveSkill(s.id)"
-          >
-            <component :is="skillIcon(s.id)" :size="12" :stroke-width="1.8" />
-            <span>{{ s.name }}</span>
-            <X :size="10" :stroke-width="2" class="tag-close" />
-          </div>
-        </div>
+      <div class="input-card">
         <!-- 待发送附件 -->
         <div
           v-if="attachments.length || pendingAttach.length"
@@ -884,73 +686,14 @@ async function deleteCurrentConv() {
         <textarea
           ref="inputEl"
           v-model="input"
-          :placeholder="
-            goalMode
-              ? '目标模式：在此写下完成条件，Claude 会持续推进直到达成 (Enter 发送) …'
-              : '请输入消息 (Enter 发送 · Shift + Enter 换行，可拖文件进来作为附件) …'
-          "
+          placeholder="请输入消息 (Enter 发送 · Shift + Enter 换行，可拖文件进来作为附件) …"
           rows="2"
           @keydown="onKeydown"
           @input="autoGrow"
         ></textarea>
         <div class="toolbar">
           <div class="toolbar-left">
-            <button
-              class="toolbar-btn"
-              :class="{ active: showSkillPanel }"
-              @click="showSkillPanel = !showSkillPanel"
-            >
-              <Puzzle :size="14" :stroke-width="1.8" />
-              <span>技能</span>
-            </button>
-            <button
-              class="toolbar-btn"
-              :class="{ active: skillsStore.has('deep-research') }"
-              @click="toggleSkill('deep-research')"
-            >
-              <Search :size="14" :stroke-width="1.8" />
-              <span>深度搜索</span>
-              <div class="btn-tooltip">
-                <div class="btn-tooltip-inner">
-                  使用 LLM 大规模联网搜索相关内容
-                  <div class="btn-tooltip-sub">
-                    激活后 Claude 会自动检索多来源信息并交叉验证
-                  </div>
-                </div>
-              </div>
-            </button>
-            <button
-              class="toolbar-btn"
-              :class="{ active: goalMode }"
-              @click="toggleGoal"
-            >
-              <Target :size="14" :stroke-width="1.8" />
-              <span>目标模式</span>
-              <div class="btn-tooltip">
-                <div class="btn-tooltip-inner">
-                  设定一个完成条件，Claude 会持续推进直到达成
-                  <div class="btn-tooltip-sub">
-                    条件满足前不中途收尾、不反问，自行规划下一步
-                  </div>
-                </div>
-              </div>
-            </button>
-            <button
-              class="toolbar-btn"
-              :class="{ active: maoMode }"
-              @click="toggleMao"
-            >
-              <Star :size="14" :stroke-width="1.8" />
-              <span>请教毛主席</span>
-              <div class="btn-tooltip">
-                <div class="btn-tooltip-inner">
-                  激活后按 Enter 发送，毛主席用资料库客观分析并生成 HTML
-                  <div class="btn-tooltip-sub">
-                    毛选式大白话 · 称呼「同志」· 兼顾未来眼光看问题
-                  </div>
-                </div>
-              </div>
-            </button>
+            <!-- 工具栏精简：技能 / 深度搜索 / 目标模式 / 请教毛主席 已移除 -->
           </div>
           <div class="toolbar-right">
             <button
@@ -1228,34 +971,6 @@ async function deleteCurrentConv() {
   color: var(--muted);
   font-size: 13px;
   letter-spacing: 0.5px;
-}
-/* ── 毛主席项目彩蛋空状态 ── */
-.mao-hero {
-  font-family: var(--serif);
-  font-size: 40px;
-  font-weight: 600;
-  letter-spacing: 6px;
-  color: var(--vermilion);
-}
-.mao-desc {
-  margin: 26px auto 0;
-  max-width: 560px;
-  font-size: 13.5px;
-  line-height: 2;
-  color: var(--text-2);
-  text-align: center;
-}
-.mao-desc strong {
-  color: var(--vermilion);
-  font-weight: 600;
-}
-.mao-slogan {
-  margin-top: 34px;
-  font-family: var(--serif);
-  font-size: 16px;
-  letter-spacing: 3px;
-  color: var(--vermilion);
-  font-weight: 600;
 }
 
 /* ═══════════ 对话渲染 (Codex 式：纯对话，无头像) ═══════════ */
@@ -1585,138 +1300,6 @@ async function deleteCurrentConv() {
   position: relative;
 }
 
-/* 技能选择弹窗 */
-.skill-panel {
-  position: absolute;
-  bottom: calc(100% - 8px);
-  left: 32px;
-  width: 360px;
-  max-height: 420px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-lg);
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.skill-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px 8px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.skill-panel-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-}
-.skill-panel-close {
-  width: 24px;
-  height: 24px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-.skill-panel-close:hover {
-  background: var(--bg-soft);
-  color: var(--text);
-}
-.skill-panel-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 10px 14px;
-  padding: 6px 10px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border-soft);
-  border-radius: 6px;
-}
-.sp-search-icon {
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.skill-panel-search input {
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 12.5px;
-  color: var(--text);
-  width: 100%;
-}
-.skill-panel-search input::placeholder {
-  color: var(--dim);
-}
-.skill-panel-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 6px;
-}
-.skill-panel-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.skill-panel-item:hover {
-  background: var(--bg-soft);
-}
-.skill-panel-item.active {
-  background: var(--primary-soft);
-}
-.sp-item-icon {
-  color: var(--primary);
-  margin-top: 1px;
-  flex-shrink: 0;
-}
-.sp-item-info {
-  flex: 1;
-  min-width: 0;
-}
-.sp-item-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-}
-.sp-item-desc {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 2px;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.skill-panel-foot {
-  padding: 8px 14px;
-  border-top: 1px solid var(--border-soft);
-}
-.sp-manage {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: transparent;
-  border: none;
-  color: var(--primary);
-  font-size: 12.5px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.sp-manage:hover {
-  background: var(--primary-soft);
-}
-
 /* 输入卡片 —— 仿豆包：明显更宽（约原来的 1.7 倍），输入多了高度自动撑大 */
 .input-card {
   width: 100%;
@@ -1807,38 +1390,7 @@ textarea {
   color: var(--dim);
 }
 
-/* Skill 标签 — 蓝色链接样式 */
-.skill-tags {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 8px;
-  padding: 0 2px;
-  flex-wrap: wrap;
-}
-.skill-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12.5px;
-  color: var(--primary);
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-.skill-tag:hover {
-  opacity: 0.7;
-  text-decoration: underline;
-}
-.tag-close {
-  opacity: 0.5;
-  width: 12px;
-  height: 12px;
-}
 
-/* 目标模式激活时，输入卡片描边提示「这一框内容即完成条件」 */
-.input-card.goal-on {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 1px var(--primary-soft), var(--shadow);
-}
 
 .toolbar-right {
   display: flex;

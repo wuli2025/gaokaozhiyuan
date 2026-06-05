@@ -65,11 +65,11 @@ onBeforeUnmount(() => {
     </div>
 
     <div class="verse">
-      <p class="line l1">愿北极星能够照亮你前路的所有黑暗</p>
-      <p class="line l2">在混乱的时代坚守本心</p>
+      <p class="line l1">十年寒窗，愿你金榜题名</p>
+      <p class="line l2">看清位次，选对方向，不负所愿</p>
     </div>
 
-    <div class="wordmark">北极星 · Polaris</div>
+    <div class="wordmark">高考志愿 · 智能填报</div>
     <div class="hint">点击任意处进入</div>
   </div>
 </template>

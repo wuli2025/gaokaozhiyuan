@@ -57,6 +57,10 @@
   --green: #3f7d5a;
   --green-soft: #e9f5ee;
   --purple: #7a5a9a;
+  /* 信息蓝：用于非警示性的强调/链接/数据标签（与朱砂红互补，降低满屏红的灼感） */
+  --blue: #2f6fb0;
+  --blue-soft: #e9f1fa;
+  --blue-deep: #1f4e79;
 
   --grad: linear-gradient(120deg, #d23a2c 0%, #ff6b47 45%, #ffb14d 100%);
   --grad-soft: linear-gradient(120deg, #c8372d, #e0644f 60%, #c89236);

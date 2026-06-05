@@ -94,7 +94,7 @@ export const useChatStore = defineStore("chatRuntime", () => {
     files: AttachedFile[] | undefined,
     opts: {
       permissionMode: PermissionMode;
-      skillIds: string[];
+      skillIds?: string[];
       goal?: string;
       consultMao?: boolean;
     }

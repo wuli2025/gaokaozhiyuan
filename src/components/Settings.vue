@@ -1,13 +1,53 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { open } from "@tauri-apps/plugin-dialog";
+import { LoaderCircle } from "@lucide/vue";
 import { kb, isTauri } from "../tauri";
 import { useThemeStore, THEMES, type ThemeKey } from "../stores/theme";
+import ProviderDock from "./ProviderDock.vue";
+import {
+  currentVersion,
+  updateVersion,
+  updateNotes,
+  updating,
+  updateProgress,
+  updateError,
+  checking,
+  upToDate,
+  lastCheckedAt,
+  ensureCurrentVersion,
+  manualCheck,
+  applyUpdate,
+} from "../composables/useUpdater";
 
 const theme = useThemeStore();
 function pickTheme(k: ThemeKey) {
   theme.set(k);
 }
+
+// 打开设置时确保拿到当前版本号（开发/浏览器态拿不到会被静默忽略）
+onMounted(ensureCurrentVersion);
+
+const lastCheckedText = computed(() => {
+  if (!lastCheckedAt.value) return "";
+  const d = new Date(lastCheckedAt.value);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}`;
+});
+
+// 把「端点没有 release / 无网络」这类报错翻成友好中文，避免看着像 bug。
+// 返回 { soft } 表示「正常无更新」用淡提示，否则按真错误红字显示。
+const updateHint = computed<{ soft: boolean; text: string } | null>(() => {
+  const e = updateError.value;
+  if (!e) return null;
+  if (/release JSON|fetch|network|404|not\s*found|无法|timeout|request/i.test(e)) {
+    return {
+      soft: true,
+      text: "暂无可用更新：尚未发布新版本，或此刻连不上更新服务器。",
+    };
+  }
+  return { soft: false, text: e };
+});
 
 const currentRoot = ref("");
 const defaultRoot = ref("");
@@ -68,7 +108,7 @@ function useDefault() {
 <template>
   <div class="settings">
     <header class="head">
-      <div class="eyebrow">★ POLARIS · 设置</div>
+      <div class="eyebrow">★ 高考志愿 · 设置</div>
       <h1>个性化与工作台</h1>
       <p class="sub">配置外观主题与本地路径，让工作台更贴合你的使用习惯。</p>
     </header>
@@ -174,6 +214,85 @@ function useDefault() {
         :class="{ ok: message.kind === 'ok', err: message.kind === 'err' }"
       >
         {{ message.text }}
+      </div>
+    </section>
+
+    <!-- ── 应用更新 ─────────────────────────────────────── -->
+    <section class="block">
+      <div class="b-head">
+        <div>
+          <div class="b-title">应用更新</div>
+          <div class="b-desc">
+            Polaris 经 <strong>GitHub Releases</strong> 推送新版本。可随时手动检查；
+            发现新版后<em>一键下载安装并自动重启</em>生效——即「关掉、过一会再开就是新版」。
+          </div>
+        </div>
+        <span class="now-tag">当前 · v{{ currentVersion || "—" }}</span>
+      </div>
+
+      <div class="row upd-row">
+        <button class="btn" @click="manualCheck" :disabled="checking || updating">
+          <LoaderCircle
+            v-if="checking"
+            :size="14"
+            :stroke-width="2"
+            class="spin"
+          />
+          <span>{{ checking ? "检查中…" : "检查更新" }}</span>
+        </button>
+        <span v-if="lastCheckedText" class="upd-meta">
+          上次检查 · {{ lastCheckedText }}
+        </span>
+      </div>
+
+      <!-- 发现新版本 -->
+      <div v-if="updateVersion" class="upd-found">
+        <div class="upd-found-top">
+          <span class="upd-newver">发现新版本 · v{{ updateVersion }}</span>
+          <button
+            class="btn primary"
+            :disabled="updating"
+            @click="applyUpdate"
+          >
+            <LoaderCircle
+              v-if="updating"
+              :size="14"
+              :stroke-width="2"
+              class="spin"
+            />
+            <span>{{
+              updating ? `更新中 ${updateProgress}%` : "立即更新并重启"
+            }}</span>
+          </button>
+        </div>
+        <div v-if="updateNotes" class="upd-notes">{{ updateNotes }}</div>
+        <div v-if="updating" class="upd-bar">
+          <div class="upd-bar-fill" :style="{ width: updateProgress + '%' }"></div>
+        </div>
+      </div>
+
+      <!-- 状态消息 -->
+      <div
+        v-if="updateHint"
+        class="msg"
+        :class="updateHint.soft ? 'info' : 'err'"
+      >
+        {{ updateHint.text }}
+      </div>
+      <div v-else-if="upToDate && !updateVersion" class="msg ok">
+        已是最新版本 ✓
+      </div>
+    </section>
+
+    <!-- ── AI 服务商（从侧栏收纳进设置） ─────────────────── -->
+    <section class="block">
+      <div class="b-title">AI 服务商</div>
+      <div class="b-desc">
+        志愿匹配与冲稳保<strong>不依赖联网 AI</strong>，均由本地真实数据计算；仅
+        <em>偶像对话 / AI 咨询</em> 需要配置一个 AI 服务商。普通用户可忽略此项。
+      </div>
+      <div class="provider-wrap">
+        <ProviderDock :collapsed="false" />
       </div>
     </section>
 
@@ -557,12 +676,95 @@ function useDefault() {
   color: var(--vermilion);
   border-left: 2px solid var(--vermilion);
 }
+.msg.info {
+  background: var(--bg-soft);
+  color: var(--muted);
+  border-left: 2px solid var(--border-strong);
+}
 
+.provider-wrap {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-soft);
+}
 .todo {
   margin: 0;
   padding-left: 18px;
   font-size: 12px;
   color: var(--muted);
   line-height: 2;
+}
+
+/* ── 应用更新区块 ─────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.upd-row {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+.upd-meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+}
+.upd-found {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--primary-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.upd-found-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.upd-newver {
+  font-family: var(--serif);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--primary-deep);
+}
+.upd-notes {
+  margin-top: 12px;
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 9px 12px;
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-2);
+  white-space: pre-wrap;
+}
+.upd-bar {
+  margin-top: 12px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border-soft);
+  overflow: hidden;
+}
+.upd-bar-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+.spin {
+  animation: upd-spin 0.9s linear infinite;
+}
+@keyframes upd-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

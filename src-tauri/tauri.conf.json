@@ -12,12 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "北极星 · Polaris",
+        "title": "高考志愿",
         "width": 1280,
         "height": 820,
         "minWidth": 960,
         "minHeight": 600,
-        "decorations": true,
+        "decorations": false,
         "resizable": true,
         "fullscreen": false,
         "theme": "Light"

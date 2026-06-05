@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from "vue";
 import Sidebar from "./components/Sidebar.vue";
+import TitleBar from "./components/TitleBar.vue";
 import ViewLoader from "./components/ViewLoader.vue";
-import RightDrawer from "./components/RightDrawer.vue";
 import ChatPanel from "./components/ChatPanel.vue";
 import KnowledgeGraph from "./components/KnowledgeGraph.vue";
 import AddProviderModal from "./components/AddProviderModal.vue";
@@ -25,12 +25,10 @@ import KnowledgeRules from "./components/KnowledgeRules.vue";
 import Settings from "./components/Settings.vue";
 
 import { useAppStore, type ViewKey } from "./stores/app";
-import { useArtifactsStore } from "./stores/artifacts";
 import { useProvidersStore } from "./stores/providers";
 import { useChatStore } from "./stores/chat";
 
 const app = useAppStore();
-const artifacts = useArtifactsStore();
 const providers = useProvidersStore();
 const chatStore = useChatStore();
 
@@ -96,21 +94,14 @@ function onEnvDone() {
   phase.value = "ready";
 }
 
-// 预览成品文件时把右侧抽屉拓宽；展开模式更宽，让观看更好看
-const drawerTrack = computed(() => {
-  if (artifacts.current) {
-    return artifacts.expanded ? "min(1040px, 72vw)" : "clamp(400px, 36vw, 560px)";
-  }
-  return `${app.drawerWidth}px`;
-});
-
-const layoutCols = computed(
-  () => `${app.sidebarWidth}px 1fr ${drawerTrack.value}`
-);
+// 志愿专项版：两栏布局（右侧抽屉已移除）
+const layoutCols = computed(() => `${app.sidebarWidth}px 1fr`);
 </script>
 
 <template>
-  <div class="shell" :style="{ gridTemplateColumns: layoutCols }">
+  <div class="app-frame">
+    <TitleBar />
+    <div class="shell" :style="{ gridTemplateColumns: layoutCols }">
     <Sidebar />
     <main class="main">
       <!-- 重视图(图谱/沙箱)用 KeepAlive 缓存：第一次进算一次，之后切走再回来瞬开，
@@ -144,7 +135,6 @@ const layoutCols = computed(
         />
       </Transition>
     </main>
-    <RightDrawer />
 
     <!-- 自动更新提示条（发现新版本时浮出） -->
     <UpdateBanner />
@@ -159,18 +149,26 @@ const layoutCols = computed(
     <Transition name="onboard-fade">
       <Onboarding v-if="phase === 'onboarding'" @done="onOnboardingDone" />
     </Transition>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.shell {
+.app-frame {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.shell {
+  flex: 1;
+  min-height: 0;
   display: grid;
   transition: grid-template-columns 180ms ease;
 }
 .main {
   position: relative;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   /* 透出 #app 的暖光画布（--app-bg），让中央工作区也沐浴在主题氛围里 */
   background: transparent;

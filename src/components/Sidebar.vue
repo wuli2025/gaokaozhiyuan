@@ -22,7 +22,7 @@ import {
   Archive,
 } from "@lucide/vue";
 import { useAppStore, type ViewKey } from "../stores/app";
-import ProviderDock from "./ProviderDock.vue";
+import BrandLogo from "./BrandLogo.vue";
 import type { Conversation } from "../tauri";
 
 const app = useAppStore();
@@ -158,9 +158,13 @@ function convGroups(projectId: string): ConvGroup[] {
 
 <template>
   <aside class="sb" :class="{ collapsed: app.sidebarCollapsed }">
-    <!-- Head：顶部留白，仅保留收起按钮（品牌 logo/文字已按要求移除） -->
+    <!-- Head：品牌（红底高考图标 + 名称）+ 收起按钮 -->
     <div class="sb-head">
       <template v-if="!app.sidebarCollapsed">
+        <div class="sb-brand">
+          <BrandLogo :size="24" :radius="7" />
+          <span class="sb-brand-name">高考志愿</span>
+        </div>
         <button
           class="collapse-btn push-right"
           title="收起侧栏"
@@ -341,7 +345,10 @@ function convGroups(projectId: string): ConvGroup[] {
     <div v-if="openMenuPid" class="menu-backdrop" @click="closeProjMenu()"></div>
 
     <div class="footer">
-      <ProviderDock :collapsed="app.sidebarCollapsed" />
+      <button class="set-entry" :class="{ rail: app.sidebarCollapsed }" title="设置" @click="app.setView('settings')">
+        <Settings :size="16" :stroke-width="1.7" />
+        <span v-if="!app.sidebarCollapsed">设置 · AI 服务商</span>
+      </button>
     </div>
   </aside>
 </template>
@@ -760,10 +767,41 @@ function convGroups(projectId: string): ConvGroup[] {
   font-style: italic;
 }
 
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sb-brand-name {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: 0.5px;
+}
 .footer {
   margin-top: auto;
   padding-top: 6px;
   border-top: 1px solid var(--border-soft);
+}
+.set-entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.set-entry:hover {
+  background: var(--selection-bg);
+  color: var(--ink);
+}
+.set-entry.rail {
+  justify-content: center;
 }
 .footer-text {
   font-size: 10.5px;

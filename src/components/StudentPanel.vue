@@ -139,7 +139,7 @@ const sysHints = computed(() => {
 .pf-row { display: flex; align-items: baseline; gap: 16px; }
 .pf-score { font-size: 32px; font-weight: 800; color: var(--ink); font-family: var(--serif); }
 .pf-score i { font-size: 14px; color: var(--muted); font-style: normal; margin-left: 2px; }
-.pf-rank { background: var(--primary-soft); color: var(--primary-deep); padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.pf-rank { background: var(--blue-soft); color: var(--blue-deep); padding: 3px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; }
 .pf-tags { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
 .pf-tag { background: var(--bg-soft); color: var(--text-2); padding: 3px 11px; border-radius: 7px; font-size: 12px; }
 .pf-actions { display: flex; flex-direction: column; gap: 8px; }
@@ -172,9 +172,9 @@ const sysHints = computed(() => {
 .sh-tag.green { background: var(--green-soft); color: var(--green); border-color: #c4e2cf; }
 .sh-tag.gold { background: var(--gold-soft); color: var(--gold-deep); border-color: #ecd5a3; }
 .sh-tag.red { background: #fde6e3; color: var(--red-deep); border-color: #f2c1ba; }
-.idol-cta { margin-top: 14px; background: none; border: none; color: var(--vermilion); font-size: 13px; font-weight: 700; padding: 0; cursor: pointer; }
+.idol-cta { margin-top: 14px; background: none; border: none; color: var(--blue); font-size: 13px; font-weight: 700; padding: 0; cursor: pointer; }
 
 .tips h3 { font-size: 15px; color: var(--ink); margin: 0 0 12px; }
 .tips ul { margin: 0; padding-left: 18px; color: var(--text-2); font-size: 13.5px; line-height: 2; }
-.tips b { color: var(--vermilion); }
+.tips b { color: var(--blue); }
 </style>

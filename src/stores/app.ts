@@ -90,7 +90,7 @@ export const useAppStore = defineStore("app", () => {
     drawerCollapsed.value = !drawerCollapsed.value;
   }
 
-  const sidebarWidth = computed(() => (sidebarCollapsed.value ? 48 : 260));
+  const sidebarWidth = computed(() => (sidebarCollapsed.value ? 52 : 320));
   // 收起后右抽屉完全消失（0 宽，不留小框/导轨）；需要时点对话顶栏的抽屉按钮或生成产物自动展开
   const drawerWidth = computed(() => (drawerCollapsed.value ? 0 : 300));
 

@@ -1,0 +1,229 @@
+/* =============================================================================
+   北极星 · 鎏金朱砂设计语言（PRD v4 落地皮肤）
+   -----------------------------------------------------------------------------
+   在 style.css 的令牌之上,提供 PRD v4 的「高级感」表现层:
+     · 统一升级各 Hub 共用的页头约定 .page > .ph(eyebrow / h1 / p)
+       —— 用 !important 越过各组件 scoped 默认值,一处生效、全站统一。
+     · 提供可复用的 PRD 原语类(.pk-*): 渐变文字、统计数、卡片、note、章节号。
+   随主题令牌自适应:换主题时这层皮肤自动跟着变色。
+   ========================================================================== */
+
+/* ── 统一页头 · 鎏金描边 + 渐变眉标 + 衬线大字 ──────────────────────────── */
+.page > .ph,
+.page > header.ph {
+  position: relative !important;
+  padding-left: 20px !important;
+  margin-bottom: 22px !important;
+  padding-bottom: 16px !important;
+}
+/* 左侧鎏金竖条(呼应 PRD 的 h3::before) */
+.page > .ph::before,
+.page > header.ph::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 22px;
+  width: 4px;
+  border-radius: 3px;
+  background: var(--grad);
+  box-shadow: 0 4px 12px var(--glow);
+}
+/* 底部渐隐金线 */
+.page > .ph::after,
+.page > header.ph::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-strong), transparent 70%);
+}
+
+/* 眉标:等宽 + 字距 + 渐变描金文字 + 前导短横 */
+.ph .eyebrow {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--mono) !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.28em !important;
+  text-transform: uppercase;
+  color: transparent !important;
+  background: var(--grad);
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  margin-bottom: 4px;
+}
+.ph .eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+
+/* 主标题:衬线、加重、墨色(浅底上比渐变字更稳更高级) */
+.ph h1 {
+  font-family: var(--serif) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.5px !important;
+  color: var(--ink) !important;
+  line-height: 1.28 !important;
+}
+.ph p {
+  color: var(--text-2) !important;
+  line-height: 1.8 !important;
+}
+
+/* =============================================================================
+   PRD 可复用原语(供新增 / 重写的组件直接套用)
+   ========================================================================== */
+
+/* 渐变描金文字 */
+.pk-grad-text {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 章节号 01 / FUTURE 风格的小标 */
+.pk-sec-no {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 玻璃感信息 chip(深色 hero 上用) */
+.pk-chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #f3dcc9;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 214, 180, 0.18);
+  border-radius: 999px;
+  padding: 6px 13px;
+  backdrop-filter: blur(8px);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.pk-chip b {
+  color: var(--amber);
+  font-weight: 700;
+}
+
+/* 统计数:衬线 + 渐变 */
+.pk-gradnum {
+  font-family: var(--serif);
+  font-weight: 800;
+  line-height: 1;
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 升级版卡片:hover 浮起 + 顶部渐变描金条 */
+.pk-card {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.pk-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--grad);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.pk-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-strong);
+}
+.pk-card:hover::before {
+  opacity: 1;
+}
+
+/* note 提示块 */
+.pk-note {
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  font-size: 13.5px;
+  line-height: 1.8;
+  border: 1px solid;
+}
+.pk-note.red {
+  background: var(--primary-soft);
+  border-color: var(--border-soft);
+  color: var(--primary-deep);
+}
+.pk-note.gold {
+  background: var(--gold-soft);
+  border-color: #eed9a8;
+  color: var(--gold-deep);
+}
+
+/* 共享的高级感「鎏金 hero band」——深色暖调 + 流光顶线 + 网格纹理。
+   供 MatchRun 等需要强首屏的视图直接套 .pk-hero。 */
+.pk-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  color: #f6e6db;
+  padding: 30px 32px;
+  background:
+    radial-gradient(640px 300px at 12% -20%, rgba(255, 107, 71, 0.4), transparent 60%),
+    radial-gradient(560px 300px at 98% -10%, rgba(255, 177, 77, 0.28), transparent 56%),
+    linear-gradient(150deg, #2a1810 0%, #1d130d 60%, #22130b 100%);
+  box-shadow: var(--shadow-lg);
+}
+.pk-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 3;
+  background: linear-gradient(90deg, transparent, var(--coral), var(--amber), var(--coral), transparent);
+  background-size: 200% 100%;
+  animation: pkShimmer 6s linear infinite;
+}
+.pk-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image:
+    linear-gradient(rgba(255, 210, 170, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 210, 170, 0.06) 1px, transparent 1px);
+  background-size: 30px 30px;
+  -webkit-mask-image: radial-gradient(120% 110% at 50% 0%, #000 30%, transparent 78%);
+  mask-image: radial-gradient(120% 110% at 50% 0%, #000 30%, transparent 78%);
+}
+.pk-hero > * {
+  position: relative;
+  z-index: 2;
+}
+@keyframes pkShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

@@ -176,11 +176,72 @@ const TRUTHS: Truth[] = [
     plan: "走考公考编/选调/科研深造；或进种业/食品/农业科技企业；用好涉农政策红利。",
     pros: "乡村振兴＋粮食安全长期利好，体制内出路稳，适合求稳。",
     fit: "分数有限想稳上岸体制、能接受涉农基层者。" },
+
+  // —— 名不副实篇（资料库《最具欺骗性的10大专业》直采，望文生义最易踩坑）——
+  { name: "信息与计算科学", cat: "名不副实", tag: "其实是数学", tagType: "gold",
+    fan: "听着像培养程序员、就是计算机/IT。",
+    real: "实为数学学科，与计算机差很远——是“数学＋信息＋管理”交叉，核心课是数值代数/数值逼近等。",
+    plan: "想进 IT 需自学编程或读研转向；天然适合走数学/金融数据/教研。",
+    pros: "数理扎实，转金融/软件/教研有路；纯本科对口窄。",
+    fit: "冲着“计算机”三个字报的最该当心。" },
+  { name: "生物医学工程", cat: "名不副实", tag: "工科非医", tagType: "gold",
+    fan: "以为学医、将来当医生。",
+    real: "不归医学管，是不折不扣的工科（医疗器械/电子/信号/计算机）。",
+    plan: "走医疗仪器研发/影像设备/临床工程，读研更稳。",
+    pros: "高端医疗器械国产化，前景不错。",
+    fit: "想当医生的别选它；爱工科又关注医疗的合适。" },
+  { name: "精算（精算数学）", cat: "名不副实", tag: "金融非数学", tagType: "gold",
+    fan: "以为是数学专业。",
+    real: "属金融保险学科，精算师门槛极高、就业薪资亮眼，在银行/保险/投资/监管做风险定价。",
+    plan: "考精算师系列证书，数理＋英语都要强，是长跑。",
+    pros: "顶端稀缺、收入高、前程可观。",
+    fit: "数理强且能长期考证者。" },
+  { name: "信息资源管理", cat: "名不副实", tag: "图书档案", tagType: "red",
+    fan: "听着像计算机/大数据。",
+    real: "另一个名字是“图书情报与档案管理”，因招生不好才改了高大上的名，对口多是图书管理员。",
+    plan: "谨慎报考；走名校＋考公(档案/图情)尚可，否则就业弱。",
+    pros: "名校＋体制内出路尚可；普通院校前景差。",
+    fit: "望文生义最易踩的坑，看清再报。" },
+  { name: "汉语国际教育", cat: "名不副实", tag: "更考英语", tagType: "gold",
+    fan: "以为专研汉语、轻松好学。",
+    real: "更要求英语好，主攻对外汉语教学；国内不吃香，出路多在涉外/出国。",
+    plan: "走国际中文教师/出国教学，或转传播/外贸。",
+    pros: "国际中文热＋复合背景者有空间。",
+    fit: "英语好、愿涉外、想教学者。" },
+  { name: "地球物理学", cat: "名不副实", tag: "野外勘探", tagType: "gold",
+    fan: "以为出入高端实验室搞地球科学。",
+    real: "介于物理/地质/大气，毕业多去矿产能源勘探、工程与环境探测，常驻野外。",
+    plan: "读研深造或进能源/勘探院所。",
+    pros: "资源能源领域稳定、刚需。",
+    fit: "能接受野外、真爱地学者。" },
+  { name: "基础医学", cat: "名不副实", tag: "科研非临床", tagType: "gold",
+    fan: "看到“医学”以为能当临床医生。",
+    real: "研究生命与疾病本质，毕业去医学院校/科研机构做研究，本科不当临床医生。",
+    plan: "坚定读研读博走科研路线。",
+    pros: "医学科研、教研前景好。",
+    fit: "爱临床别选、爱科研就选。" },
+  { name: "数学与应用数学", cat: "名不副实", tag: "深造跳板", tagType: "gold",
+    fan: "以为很难就业。",
+    real: "是连接各学科的桥梁，本科窄但深造后可转金融/计算机/编程，很多去大厂写程序。",
+    plan: "以数学为底深造转应用，尽早定方向。",
+    pros: "转码/金工竞争力极强。",
+    fit: "数理拔尖、目标深造者。" },
+  { name: "哲学", cat: "名不副实", tag: "考公金饭碗", tagType: "green",
+    fan: "以为是找不到工作的专业。",
+    real: "毕业多去研究所/国家机关，考公友好，是“家长眼中的金饭碗”。",
+    plan: "走考公/读研/教研/出版。",
+    pros: "考公稳、就业并不差。",
+    fit: "爱思辨、目标考公考编者。" },
+  { name: "数字媒体 · 艺术 vs 技术", cat: "名不副实", tag: "一字之差两条路", tagType: "gold",
+    fan: "以为“数字媒体艺术/技术”是同一个专业。",
+    real: "艺术＝美工设计(动漫/游戏/动画)，技术＝编程开发(VR/图形学/特效)，差别极大、招生方式也不同。",
+    plan: "看清是艺考美术还是工科编程再报志愿。",
+    pros: "技术方向偏 IT 更稳；艺术方向看作品与天赋。",
+    fit: "别只看名字，认准学位与课程表。" },
 ];
 
-const CATS = ["工科", "医学", "财经", "人文社科"];
+const CATS = ["工科", "医学", "财经", "人文社科", "名不副实"];
 const activeCat = ref("全部");
-const selected = ref<Truth>(TRUTHS[9]); // 默认生物科学（天坑之首）
 
 const list = computed(() =>
   activeCat.value === "全部" ? TRUTHS : TRUTHS.filter((t) => t.cat === activeCat.value)
@@ -189,9 +250,9 @@ const list = computed(() =>
 const ROWS = [
   { key: "fan", lab: "幻想", cls: "fan" },
   { key: "real", lab: "真相", cls: "real" },
-  { key: "plan", lab: "未来规划", cls: "plan" },
-  { key: "pros", lab: "优势·前景", cls: "pros" },
-  { key: "fit", lab: "适合·劝退", cls: "fit" },
+  { key: "plan", lab: "规划", cls: "plan" },
+  { key: "pros", lab: "前景", cls: "pros" },
+  { key: "fit", lab: "适合", cls: "fit" },
 ] as const;
 </script>
 
@@ -208,31 +269,20 @@ const ROWS = [
       <button v-for="c in CATS" :key="c" :class="{ on: activeCat === c }" @click="activeCat = c">{{ c }}</button>
     </div>
 
-    <div class="truthmock">
-      <div class="majlist">
-        <button
-          v-for="t in list"
-          :key="t.name"
-          class="mi"
-          :class="{ on: selected.name === t.name }"
-          @click="selected = t"
-        >
-          <span class="mi-name">{{ t.name }}</span>
-          <span class="pill" :class="t.tagType">{{ t.tag }}</span>
-        </button>
-      </div>
+    <div class="count-line">共 {{ list.length }} 张真相卡 · 证据源自载望升学资料（专业篇/就业方向篇/职业规划篇/答疑篇）</div>
 
-      <div class="truthdetail">
-        <div class="tt">
-          {{ selected.name }}
-          <span class="tag" :class="selected.tagType">{{ selected.tag }}</span>
+    <div class="card-grid">
+      <article v-for="t in list" :key="t.name" class="truth">
+        <div class="th">
+          <span class="th-name">{{ t.name }}</span>
+          <span class="pill" :class="t.tagType">{{ t.tag }}</span>
         </div>
-        <div class="sub">证据：载望升学资料·专业篇 / 就业方向篇 / 职业规划篇 / 答疑篇（真实案例）</div>
-        <div v-for="r in ROWS" :key="r.key" class="trow" :class="r.cls">
-          <span class="lab">{{ r.lab }}</span>
-          <span class="val">{{ (selected as any)[r.key] }}</span>
+        <div class="bd">
+          <p v-for="r in ROWS" :key="r.key">
+            <span class="k" :class="r.cls">{{ r.lab }}</span>{{ (t as any)[r.key] }}
+          </p>
         </div>
-      </div>
+      </article>
     </div>
 
     <div class="three-truth">
@@ -257,39 +307,32 @@ const ROWS = [
 .cat-tabs button { border: 1px solid var(--border); background: var(--panel); border-radius: 999px; padding: 6px 16px; font-size: 13px; color: var(--text-2); font-weight: 600; }
 .cat-tabs button.on { background: var(--grad); color: #fff; border-color: transparent; box-shadow: 0 4px 12px -4px rgba(210,58,44,.5); }
 
-.truthmock { display: grid; grid-template-columns: 240px 1fr; min-height: 420px; background: var(--panel); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
-.majlist { border-right: 1px solid var(--border); padding: 10px 8px; background: var(--bg-soft); overflow-y: auto; max-height: 560px; }
-.mi { display: flex; justify-content: space-between; align-items: center; gap: 6px; width: 100%; padding: 9px 11px; border: none; border-radius: 8px; font-size: 12.8px; color: var(--text-2); background: transparent; margin-bottom: 2px; text-align: left; transition: .14s; }
-.mi:hover { background: var(--selection-bg); }
-.mi.on { background: var(--primary-soft); color: var(--primary-deep); font-weight: 700; border-left: 2px solid var(--vermilion); padding-left: 9px; }
-.mi-name { flex: 1; min-width: 0; }
-.pill { font-size: 10px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; }
+.count-line { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+
+.card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.truth { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: transform .18s, box-shadow .18s; }
+.truth:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.th { padding: 11px 15px; background: var(--bg-soft); font-weight: 800; color: var(--ink); display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
+.th-name { font-size: 14.5px; font-family: var(--serif); }
+.pill { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; }
 .pill.red { background: #fde6e3; color: var(--red-deep); border-color: #f2c1ba; }
 .pill.gold { background: var(--gold-soft); color: var(--gold-deep); border-color: #ecd5a3; }
 .pill.green { background: var(--green-soft); color: var(--green); border-color: #c4e2cf; }
+.bd { padding: 12px 15px; font-size: 12.8px; line-height: 1.7; flex: 1; color: var(--text-2); }
+.bd p { margin: 6px 0; }
+.bd .k { display: inline-block; min-width: 38px; font-weight: 800; margin-right: 6px; }
+.bd .k.fan { color: var(--gold-deep); }
+.bd .k.real { color: var(--red-deep); }
+.bd .k.plan { color: var(--blue); }
+.bd .k.pros { color: var(--green); }
+.bd .k.fit { color: var(--purple); }
 
-.truthdetail { padding: 22px 26px; overflow-y: auto; max-height: 560px; }
-.tt { font-family: var(--serif); font-size: 21px; font-weight: 800; color: var(--ink); margin-bottom: 4px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.tag { font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; }
-.tag.red { background: #fde6e3; color: var(--red-deep); }
-.tag.gold { background: var(--gold-soft); color: var(--gold-deep); }
-.tag.green { background: var(--green-soft); color: var(--green); }
-.sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
-.trow { display: grid; grid-template-columns: 80px 1fr; gap: 14px; padding: 13px 0; border-top: 1px solid var(--border-soft); font-size: 13.5px; line-height: 1.78; }
-.trow .lab { font-weight: 800; font-size: 13px; white-space: nowrap; }
-.trow .val { color: var(--text-2); }
-.trow.fan .lab { color: var(--gold-deep); }
-.trow.real .lab { color: var(--red-deep); }
-.trow.plan .lab { color: #2f6f8f; }
-.trow.pros .lab { color: var(--green); }
-.trow.fit .lab { color: var(--purple); }
-
-.three-truth { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; }
+.three-truth { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 24px; }
 .tt-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow-sm); }
-.tt-card h4 { margin: 0 0 7px; color: var(--red-deep); font-size: 14px; }
+.tt-card h4 { margin: 0 0 7px; color: var(--blue-deep); font-size: 14px; }
 .tt-card p { margin: 0; font-size: 12.8px; color: var(--text-2); line-height: 1.75; }
 
 .warn-band { margin-top: 18px; background: linear-gradient(135deg, #fdebe7, #fbe2dc); border: 1px solid #f3ccc4; border-left: 4px solid var(--red); border-radius: 12px; padding: 14px 18px; color: #8a2c22; font-size: 13px; line-height: 1.8; }
 .warn-band b { color: var(--red-deep); }
-@media (max-width: 820px) { .truthmock { grid-template-columns: 1fr; } .three-truth { grid-template-columns: 1fr; } }
+@media (max-width: 820px) { .card-grid { grid-template-columns: 1fr; } .three-truth { grid-template-columns: 1fr; } }
 </style>
