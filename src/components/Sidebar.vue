@@ -22,7 +22,6 @@ import {
   Archive,
 } from "@lucide/vue";
 import { useAppStore, type ViewKey } from "../stores/app";
-import BrandLogo from "./BrandLogo.vue";
 import type { Conversation } from "../tauri";
 
 const app = useAppStore();
@@ -161,10 +160,6 @@ function convGroups(projectId: string): ConvGroup[] {
     <!-- Head：品牌（红底高考图标 + 名称）+ 收起按钮 -->
     <div class="sb-head">
       <template v-if="!app.sidebarCollapsed">
-        <div class="sb-brand">
-          <BrandLogo :size="24" :radius="7" />
-          <span class="sb-brand-name">高考志愿</span>
-        </div>
         <button
           class="collapse-btn push-right"
           title="收起侧栏"
@@ -767,18 +762,6 @@ function convGroups(projectId: string): ConvGroup[] {
   font-style: italic;
 }
 
-.sb-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.sb-brand-name {
-  font-family: var(--serif);
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--ink);
-  letter-spacing: 0.5px;
-}
 .footer {
   margin-top: auto;
   padding-top: 6px;

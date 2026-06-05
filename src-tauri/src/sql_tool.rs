@@ -6,10 +6,35 @@ use serde::Serialize;
 use std::path::PathBuf;
 use std::collections::HashSet;
 
-const DB_PATH: &str = r"C:\Users\mi\PolarisGaokao\polaris-gaokao.db";
+/// 解析高考数据库路径, 按优先级:
+/// 1. 环境变量 `POLARIS_GK_DB` —— 显式覆盖, 应对异常盘符 / 自定义安装位置;
+/// 2. `<用户主目录>/PolarisGaokao/polaris-gaokao.db` —— 跨机器 / 跨用户自适配,
+///    与 ETL 脚本 (`_gd_etl.py`) 落库位置保持一致。
+///
+/// 绝不再写死 `C:\Users\mi\...` 这类带具体用户名/盘符的绝对路径。
+fn db_path() -> Result<PathBuf, String> {
+    if let Ok(p) = std::env::var("POLARIS_GK_DB") {
+        if !p.trim().is_empty() {
+            return Ok(PathBuf::from(p));
+        }
+    }
+    let home = directories::UserDirs::new()
+        .ok_or_else(|| "无法定位用户主目录".to_string())?
+        .home_dir()
+        .to_path_buf();
+    Ok(home.join("PolarisGaokao").join("polaris-gaokao.db"))
+}
 
 fn open_db() -> Result<Connection, String> {
-    Connection::open(DB_PATH).map_err(|e| format!("open db failed: {e}"))
+    let path = db_path()?;
+    if !path.exists() {
+        return Err(format!(
+            "数据库文件不存在: {} (可设环境变量 POLARIS_GK_DB 指向其它位置)",
+            path.display()
+        ));
+    }
+    Connection::open(&path)
+        .map_err(|e| format!("open db failed: {e} (path={})", path.display()))
 }
 
 #[derive(Serialize, Debug)]
@@ -593,9 +618,9 @@ pub fn gk_school_detail(args: serde_json::Value) -> Result<serde_json::Value, St
 /// 健康检查(查表/库/路径)
 #[tauri::command]
 pub fn sql_tool_status() -> Result<serde_json::Value, String> {
-    let path = PathBuf::from(DB_PATH);
+    let path = db_path()?;
     if !path.exists() {
-        return Ok(serde_json::json!({"ok": false, "err": "db not found", "path": DB_PATH}));
+        return Ok(serde_json::json!({"ok": false, "err": "db not found", "path": path.display().to_string()}));
     }
     let conn = open_db()?;
     let stats: serde_json::Value = serde_json::json!({
@@ -605,5 +630,5 @@ pub fn sql_tool_status() -> Result<serde_json::Value, String> {
         "plan":   conn.query_row("SELECT COUNT(*) FROM plan",   [], |r| r.get::<_, i64>(0)).unwrap_or(0),
         "tier_rule": conn.query_row("SELECT COUNT(*) FROM tier_rule", [], |r| r.get::<_, i64>(0)).unwrap_or(0),
     });
-    Ok(serde_json::json!({"ok": true, "path": DB_PATH, "stats": stats}))
+    Ok(serde_json::json!({"ok": true, "path": path.display().to_string(), "stats": stats}))
 }
