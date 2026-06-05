@@ -712,16 +712,119 @@ pub struct KbUploadResult {
     pub message: String,
 }
 
-/// 把一个源文件落到 KB 的 raw/:
-/// - 可抽文本 → 写 `raw/<stem>.md`
-/// - 不可抽(图片/二进制) → 原样复制 `raw/<filename>`
-/// 返回写入的相对路径(正斜杠)。
+// ───────────────────────── 个人 wiki(考生个人资料专区) ─────────────────────────
+
+/// 考生个人资料专区(顶层目录, 与 raw/ output/ wiki/ 并列)。
+/// 放成绩单 / 体检表 / 个人陈述 等**本人**资料: 转 md 后进知识库地图, 模型按需 Read,
+/// 不挤占 wiki/ 全文注入预算(隐私 + 上下文预算双重考量)。整理出的结构化报告另写
+/// 进 `wiki/students/`(那里会被全文自动注入, 每次对话模型都"自动采集"得到)。
+pub const PERSONAL_DIR: &str = "个人档案";
+
+/// 个人资料库里的一份文件(档案页清单用)。
+#[derive(Serialize)]
+pub struct PersonalFile {
+    pub name: String,
+    /// KB 根相对路径(正斜杠), 供 kb_read / kb_delete 用
+    pub rel_path: String,
+    pub size: u64,
+    /// 修改时间 Unix 秒
+    pub modified: u64,
+}
+
+/// 档案页拖拽/选择上传: 批量(可含目录)落进 `个人档案/`, 每个转 md, 末尾重扫一次索引。
+/// 返回逐文件结果(失败不影响其余)。
+#[tauri::command]
+pub fn kb_upload_personal(paths: Vec<String>) -> Vec<KbUploadResult> {
+    const MAX_FILES: usize = 200;
+    let root = KB_ROOT.read().clone();
+    let files = expand_to_files(&paths, MAX_FILES);
+
+    let mut results = Vec::with_capacity(files.len());
+    for f in &files {
+        let name = f
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| f.to_string_lossy().to_string());
+        match ingest_into(&root, f, PERSONAL_DIR) {
+            Ok(rel) => results.push(KbUploadResult {
+                name,
+                rel_path: rel,
+                ok: true,
+                message: String::new(),
+            }),
+            Err(e) => results.push(KbUploadResult {
+                name,
+                rel_path: String::new(),
+                ok: false,
+                message: e,
+            }),
+        }
+    }
+
+    let docs = scan_all(&root);
+    *INDEX.write() = docs;
+
+    results
+}
+
+/// 列出 `个人档案/` 下的全部文件(档案页清单)。直接走文件系统(不依赖索引,
+/// 因为图片等不可抽文本的文件不进 INDEX)。按修改时间倒序。
+#[tauri::command]
+pub fn kb_list_personal() -> Vec<PersonalFile> {
+    let root = KB_ROOT.read().clone();
+    let dir = root.join(PERSONAL_DIR);
+    let mut out: Vec<PersonalFile> = Vec::new();
+    if !dir.exists() {
+        return out;
+    }
+    for entry in WalkDir::new(&dir).into_iter().flatten() {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        let p = entry.path();
+        let name = p
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let (size, modified) = match p.metadata() {
+            Ok(meta) => {
+                let size = meta.len();
+                let modified = meta
+                    .modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0);
+                (size, modified)
+            }
+            Err(_) => (0, 0),
+        };
+        out.push(PersonalFile {
+            name,
+            rel_path: rel_of(&root, p),
+            size,
+            modified,
+        });
+    }
+    out.sort_by(|a, b| b.modified.cmp(&a.modified));
+    out
+}
+
+/// 把一个源文件落到 KB 的 raw/(培训资料默认归处)。
 fn ingest_one(root: &Path, src: &Path) -> Result<String, String> {
+    ingest_into(root, src, "raw")
+}
+
+/// 把一个源文件落到 KB 的 `<subdir>/`:
+/// - 可抽文本 → 写 `<subdir>/<stem>.md`
+/// - 不可抽(图片/二进制) → 原样复制 `<subdir>/<filename>`
+/// 返回写入的相对路径(正斜杠)。
+fn ingest_into(root: &Path, src: &Path, subdir: &str) -> Result<String, String> {
     if !src.is_file() {
         return Err(format!("不是文件: {}", src.to_string_lossy()));
     }
-    let raw_dir = root.join("raw");
-    fs::create_dir_all(&raw_dir).map_err(|e| e.to_string())?;
+    let dst_dir = root.join(subdir);
+    fs::create_dir_all(&dst_dir).map_err(|e| e.to_string())?;
 
     match convert::convert_to_markdown(src)? {
         Some(md) => {
@@ -729,7 +832,7 @@ fn ingest_one(root: &Path, src: &Path) -> Result<String, String> {
                 .file_stem()
                 .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_else(|| "untitled".into());
-            let dst = unique_path(&raw_dir, &stem, "md");
+            let dst = unique_path(&dst_dir, &stem, "md");
             // 顶部补一个标题,便于 KB 索引与预览
             let titled = format!("# {stem}\n\n{md}");
             fs::write(&dst, titled).map_err(|e| e.to_string())?;
@@ -742,7 +845,7 @@ fn ingest_one(root: &Path, src: &Path) -> Result<String, String> {
                 .to_string_lossy()
                 .to_string();
             let (stem, ext) = split_name(&fname);
-            let dst = unique_path(&raw_dir, &stem, &ext);
+            let dst = unique_path(&dst_dir, &stem, &ext);
             fs::copy(src, &dst).map_err(|e| e.to_string())?;
             Ok(rel_of(root, &dst))
         }

@@ -109,6 +109,10 @@ pub struct ChatSendArgs {
     /// 「请教毛主席」：注入毛选式客观分析指令，调用毛主席资料库，生成标注来源的 HTML。
     #[serde(default)]
     pub consult_mao: bool,
+    /// 「一键整理个人 wiki」：注入个人考试报告指令，读 `个人档案/`+学生画像，
+    /// 把结构化报告写进 `wiki/students/我的档案.md`(含可解析的 JSON 块)。
+    #[serde(default)]
+    pub gen_report: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -211,6 +215,12 @@ pub async fn chat_send(app: AppHandle, args: ChatSendArgs) -> Result<String, Str
     // 2.6 请教毛主席: 注入毛选式客观分析指令(调资料库 + 生成标来源 HTML)
     if args.consult_mao {
         final_prompt.push_str(&mao_consult_directive(&art_dir));
+        final_prompt.push_str("\n\n---\n\n");
+    }
+
+    // 2.65 一键整理个人 wiki: 读个人档案 + 学生画像 → 写结构化考试报告
+    if args.gen_report {
+        final_prompt.push_str(&personal_report_directive());
         final_prompt.push_str("\n\n---\n\n");
     }
 
@@ -821,6 +831,50 @@ fn mao_consult_directive(art_dir: &Path) -> String {
 3. 对话末尾用一句话点明生成了哪个 HTML 文件(绝对路径), 方便同志打开。\n\n\
 结尾可以用一句鼓励的话, 例如「为人民服务」「为建设共产主义事业而奋斗」。",
         dir = dir
+    )
+}
+
+/// 一键整理个人 wiki 指令: 读 `个人档案/` + 学生画像 → 生成结构化考试报告,
+/// 写进 `wiki/students/我的档案.md`(带 `<!--REPORT_JSON ... -->` 机读块, 供档案页解析渲染)。
+/// 报告落在 wiki/ 下 → 之后每次对话都会被全文自动注入, 模型"自动采集"到这份个人 wiki。
+fn personal_report_directive() -> String {
+    let root = kb::kb_root().replace('\\', "/");
+    let report_path = format!("{root}/wiki/students/我的档案.md");
+    let personal_dir = format!("{root}/个人档案");
+    format!(
+        "## 一键整理 · 个人考试报告 (Report Mode)\n\n\
+本轮用户在「我的档案」页点了「一键整理生成报告」。请你扮演**严谨、不替学生拍板的高考志愿规划师**, \
+把考生散落的个人资料整理成一份**结构化考试报告**, 并写入指定文件。这是本轮唯一目标, 不要做填报匹配。\n\n\
+**第一步 · 取证 (KB-first, 没有调查没有发言权)**\n\
+1. 用 `Read`/`Glob`/`Grep` 把考生个人资料专区读全:\n   `{personal_dir}`\n   \
+(成绩单 / 体检表 / 个人陈述 / 获奖 等, 已转成 md; 图片类标注「需人工查看」不要瞎编内容)。\n\
+2. 学生画像(省份/选科/分数/位次/志向八维)已通过用户消息的 JSON 给你, 以它为准。\n\
+3. wiki/ 知识层已全文注入, 需要解释专业/行业/祛魅时沿双链取证。\n\n\
+**第二步 · 判断 (诚实、可溯源)**\n\
+- 每条结论尽量指明来自哪份资料; 资料里没有的**绝不编造**, 列进 `gaps` 标「资料不足」。\n\
+- 学科强弱、风险提示要客观, 一分为二; 不替学生决定, 只把利弊端清楚。\n\n\
+**第三步 · 写文件 (关键)**\n\
+把报告写到这个绝对路径(目录不存在就先创建):\n   `{report_path}`\n\
+文件为 Markdown(给人看), **并在文件最末尾**附一段机读 JSON, 用如下 HTML 注释包裹(档案页靠它渲染卡片, 务必合法 JSON):\n\n\
+```\n\
+<!--REPORT_JSON\n\
+{{\n\
+  \"headline\": \"一句话总评(<=40字)\",\n\
+  \"score_profile\": {{\"score\": 数字或null, \"rank\": 数字或null, \"province\": \"\", \"track\": \"物理类|历史类\", \"subjects\": \"如 物化地\"}},\n\
+  \"subjects\": [{{\"name\": \"物理\", \"level\": \"强|中|弱\", \"note\": \"依据\"}}],\n\
+  \"strengths\": [\"优势点\"],\n\
+  \"risks\": [{{\"level\": \"high|mid|low\", \"text\": \"风险/注意事项\"}}],\n\
+  \"directions\": [\"建议关注的专业/方向(粗略, 不是最终志愿)\"],\n\
+  \"gaps\": [\"资料不足、待补充之处\"],\n\
+  \"sources\": [\"个人档案/成绩单.md\"]\n\
+}}\n\
+-->\n\
+```\n\n\
+**第四步 · 回话**\n\
+对话里只用一两句话说明报告已生成并写入档案(不必复述全文), 档案页会自动读出并渲染成报告卡。\n\
+若个人资料专区为空, 就基于现有学生画像生成一份「初步报告」, 并在 `gaps` 里明确提示用户上传成绩单等资料以提高准确度。",
+        personal_dir = personal_dir,
+        report_path = report_path,
     )
 }
 

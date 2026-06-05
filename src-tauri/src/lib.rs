@@ -59,6 +59,8 @@ pub fn run() {
             kb::kb_search,
             kb::kb_ingest,
             kb::kb_upload_files,
+            kb::kb_upload_personal,
+            kb::kb_list_personal,
             kb::kb_graph,
             // SQL 工具 4 件套 (PRD §04 §05, 模型只读参数化工具)
             sql_tool::sql_tool_status,

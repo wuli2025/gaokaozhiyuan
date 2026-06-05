@@ -59,6 +59,14 @@ export interface KbUploadResult {
   ok: boolean;
   message: string;
 }
+/** 个人资料专区里的一份文件（档案页清单用） */
+export interface PersonalFile {
+  name: string;
+  relPath: string;
+  size: number;
+  /** 修改时间 Unix 秒 */
+  modified: number;
+}
 
 export const kb = {
   scan: () => invoke<number>("kb_scan"),
@@ -76,6 +84,11 @@ export const kb = {
   /** 拖拽上传：任意格式 → 转 markdown 入 raw/，返回逐文件结果 */
   uploadFiles: (paths: string[]) =>
     invoke<KbUploadResult[]>("kb_upload_files", { paths }),
+  /** 档案页上传：任意格式 → 转 markdown 入「个人档案/」专区，返回逐文件结果 */
+  uploadPersonal: (paths: string[]) =>
+    invoke<KbUploadResult[]>("kb_upload_personal", { paths }),
+  /** 列出「个人档案/」专区里的文件（按修改时间倒序） */
+  listPersonal: () => invoke<PersonalFile[]>("kb_list_personal"),
   graph: () => invoke<KbGraph>("kb_graph"),
   root: () => invoke<string>("kb_root"),
   defaultRoot: () => invoke<string>("kb_default_root"),
@@ -212,6 +225,8 @@ export interface ChatSendArgs {
   goal?: string;
   /** 「请教毛主席」：注入毛选式客观分析指令，调用毛主席资料库，生成标注来源的 HTML。 */
   consultMao?: boolean;
+  /** 「一键整理个人 wiki」：读个人档案+画像，生成结构化考试报告写入 wiki/students/。 */
+  genReport?: boolean;
 }
 
 export interface ChatStreamEvent {
@@ -531,6 +546,17 @@ function browserStub(cmd: string, _args?: Record<string, unknown>): unknown {
         message: "(browser stub)",
       }));
     }
+    case "kb_upload_personal": {
+      const paths = (_args?.paths as string[]) ?? [];
+      return paths.map((p) => ({
+        name: p.split(/[\\/]/).pop() || p,
+        relPath: `个人档案/${p.split(/[\\/]/).pop() || p}`,
+        ok: true,
+        message: "(browser stub)",
+      }));
+    }
+    case "kb_list_personal":
+      return [];
     case "chat_attach_files": {
       const paths = (_args?.paths as string[]) ?? [];
       return paths.map((p) => ({
