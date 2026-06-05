@@ -15,7 +15,8 @@ export type ViewKey =
   | "rule"        //  🟨 规则 Hub（含 SQL 工具调试台）
   | "case"        //  ⬜ 案例 Hub
   | "network"     //  🕸️ 5+1 网络拓扑
-  | "student"     //  🟪 学生侧活画像
+  | "student"     //  🟪 学生侧活画像 / 我的档案 + 志向画像
+  | "idol"        //  ★ 偶像对话
   | "match"       //  🔍 Agentic 真适配（两阶段可视化）
   | "graph"       //  旧通用图谱（保留为"网络拓扑"的可视化）
   | "knowledge"   //  知识规则（CLAUDE.md + 健康度）

@@ -1,49 +1,208 @@
-/* ===== Polaris 墨蓝水墨主题 (v6 token, 沿用 PRD) ===== */
+/* =============================================================================
+   北极星 · 高考志愿版 — 设计令牌 / 主题系统
+   -----------------------------------------------------------------------------
+   · 默认主题 = 「鎏金朱砂 · 喜庆」(festive)，承袭产品 PRD v4 的暖红描金气质：
+     沉稳的纸感底色 + 朱砂/鎏金渐变点缀 + 层次化柔影，喜庆而不艳俗、高级而有格调。
+   · 备选主题以 html[data-theme="..."] 覆盖令牌：
+       celadon  青瓷雅致 —— 雨过天青的克制冷调，安稳、耐看
+       inkblue  墨蓝沉静 —— 深蓝科技感，专业、可信
+   · 主题切换由 stores/theme.ts 负责（写 data-theme + 持久化）。
+   · 组件一律消费 var(--token)，新增主题只需在此追加一个覆盖块。
+   ========================================================================== */
+
 :root {
-  --bg: #fafaf7;
-  --bg-soft: #f5f4ef;
-  --panel: #ffffff;
-  --panel-hover: #fbfaf6;
+  /* ── 底层纸感 ───────────────────────────────────────────── */
+  --bg: #f5ece2;
+  --bg-soft: #fbf4ec;
+  --panel: #fffdfb;
+  --panel-hover: #fdf6ef;
 
-  --border: #e2e0d8;
-  --border-soft: #ecebe5;
-  --border-strong: #d0cec5;
+  /* 应用画布背景：四角暖光晕染，营造「被托住」的安稳氛围（科技感的微光） */
+  --app-bg:
+    radial-gradient(920px 520px at 12% -8%, #fde6d8 0%, transparent 46%),
+    radial-gradient(780px 460px at 100% 0%, #fbe2d6 0%, transparent 42%),
+    radial-gradient(700px 620px at 50% 118%, #fae6da 0%, transparent 52%),
+    var(--bg);
 
-  --text: #1a1a1c;
-  --text-2: #44444a;
-  --muted: #8a8a92;
-  --dim: #b5b5bc;
+  /* ── 描边 ──────────────────────────────────────────────── */
+  --border: #ecdfd1;
+  --border-soft: #f3eadf;
+  --border-strong: #e2d1c3;
 
-  --ink: #1a1a1c;
-  --ink-2: #3a3a40;
+  /* ── 文字（各主题保持深色，确保对比与可读） ───────────────── */
+  --text: #26201b;
+  --text-2: #5c4d44;
+  --muted: #9a877c;
+  --dim: #c4b5a9;
 
-  --selection-bg: #ebebe8;
-  --selection-bg-hover: #e2e2df;
+  --ink: #221a14;
+  --ink-2: #3a2a20;
 
-  --primary: #2c4661;
-  --primary-soft: #e8edf3;
-  --primary-deep: #1d3045;
+  --selection-bg: #f0e7db;
+  --selection-bg-hover: #e9ddcd;
 
-  --vermilion: #c0392b;
-  --vermilion-soft: #fdeeec;
+  /* ── 主色 / 强调色 ─────────────────────────────────────── */
+  --primary: #c0392b;
+  --primary-soft: #fdeee8;
+  --primary-deep: #a82a23;
 
-  --gold: #a78c4f;
+  --vermilion: #d23a2c;
+  --vermilion-soft: #fdece8;
 
-  --code-bg: #f4f3ee;
-  --code-text: #3a3a40;
+  --gold: #c89236;
+  --gold-deep: #9a6b14;
+  --gold-soft: #fbf0d8;
+  --coral: #ff6b47;
+  --amber: #ffb14d;
+  --green: #3f7d5a;
+  --green-soft: #e9f5ee;
+  --purple: #7a5a9a;
 
-  --shadow-sm: 0 1px 1px rgba(20, 20, 25, 0.018);
-  --shadow: 0 1px 6px rgba(20, 20, 25, 0.025);
-  --shadow-lg: 0 4px 22px rgba(20, 20, 25, 0.06);
+  --grad: linear-gradient(120deg, #d23a2c 0%, #ff6b47 45%, #ffb14d 100%);
+  --grad-soft: linear-gradient(120deg, #c8372d, #e0644f 60%, #c89236);
 
-  --hairline: rgba(20, 20, 25, 0.06);
+  --code-bg: #fdece8;
+  --code-text: #a82a23;
 
+  /* ── 形状 / 光影 ───────────────────────────────────────── */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+
+  --shadow-sm: 0 1px 2px rgba(140, 70, 40, 0.05), 0 1px 1px rgba(140, 70, 40, 0.03);
+  --shadow: 0 4px 18px rgba(150, 80, 45, 0.08), 0 1px 3px rgba(150, 80, 45, 0.05);
+  --shadow-lg: 0 24px 60px -12px rgba(150, 80, 45, 0.2), 0 8px 24px -8px rgba(150, 80, 45, 0.12);
+
+  --hairline: rgba(140, 70, 40, 0.07);
+  --ring: rgba(210, 58, 44, 0.18); /* 焦点光环，主题色的低透明度 */
+  --glow: rgba(255, 107, 71, 0.22);
+
+  /* ── 字体 ──────────────────────────────────────────────── */
   --serif: "Source Han Serif SC", "Noto Serif SC", STSong, "SimSun", serif;
   --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
     "Segoe UI", Inter, sans-serif;
   --mono: "JetBrains Mono", "SF Mono", "Consolas", monospace;
 }
 
+/* =============================================================================
+   主题 · 青瓷雅致 (celadon) —— 雨过天青，克制、安稳、耐看
+   ========================================================================== */
+:root[data-theme="celadon"] {
+  --bg: #eef3ef;
+  --bg-soft: #f4f8f4;
+  --panel: #fffffe;
+  --panel-hover: #f5faf6;
+  --app-bg:
+    radial-gradient(920px 520px at 12% -8%, #dceee4 0%, transparent 46%),
+    radial-gradient(780px 460px at 100% 0%, #d8ece6 0%, transparent 42%),
+    radial-gradient(700px 620px at 50% 118%, #dcefe9 0%, transparent 52%),
+    var(--bg);
+
+  --border: #d6e4dc;
+  --border-soft: #e6efe9;
+  --border-strong: #c5d9cf;
+
+  --text: #1c2622;
+  --text-2: #41534b;
+  --muted: #7f9089;
+  --dim: #aec1b8;
+  --ink: #14201b;
+  --ink-2: #213029;
+
+  --selection-bg: #dcebe2;
+  --selection-bg-hover: #cfe4d9;
+
+  --primary: #2f7d5f;
+  --primary-soft: #e4f2ea;
+  --primary-deep: #1f5e46;
+
+  --vermilion: #c2654a;       /* 暖陶点缀，少量出现 */
+  --vermilion-soft: #f6e7e0;
+
+  --gold: #b88a3a;
+  --gold-deep: #8a6516;
+  --gold-soft: #f4ecd6;
+  --coral: #4fa885;
+  --amber: #7cc6a3;
+  --green: #2f7d5f;
+  --green-soft: #e4f2ea;
+  --purple: #6f7aa0;
+
+  --grad: linear-gradient(120deg, #1f6e52 0%, #4fa885 48%, #7cc6a3 100%);
+  --grad-soft: linear-gradient(120deg, #2f7d5f, #4fa885 60%, #9cc6a8);
+
+  --code-bg: #e4f2ea;
+  --code-text: #1f5e46;
+
+  --shadow-sm: 0 1px 2px rgba(40, 90, 70, 0.05), 0 1px 1px rgba(40, 90, 70, 0.03);
+  --shadow: 0 4px 18px rgba(40, 100, 75, 0.08), 0 1px 3px rgba(40, 100, 75, 0.05);
+  --shadow-lg: 0 24px 60px -12px rgba(40, 100, 75, 0.2), 0 8px 24px -8px rgba(40, 100, 75, 0.12);
+  --hairline: rgba(40, 90, 70, 0.08);
+  --ring: rgba(47, 125, 95, 0.2);
+  --glow: rgba(79, 168, 133, 0.22);
+}
+
+/* =============================================================================
+   主题 · 墨蓝沉静 (inkblue) —— 深蓝科技感，专业、可信、稳重
+   ========================================================================== */
+:root[data-theme="inkblue"] {
+  --bg: #eef1f6;
+  --bg-soft: #f4f6fb;
+  --panel: #ffffff;
+  --panel-hover: #f4f7fc;
+  --app-bg:
+    radial-gradient(920px 520px at 12% -8%, #dfe8f6 0%, transparent 46%),
+    radial-gradient(780px 460px at 100% 0%, #e0e9f7 0%, transparent 42%),
+    radial-gradient(700px 620px at 50% 118%, #e3edfa 0%, transparent 52%),
+    var(--bg);
+
+  --border: #d8e0ec;
+  --border-soft: #e7edf5;
+  --border-strong: #c6d2e3;
+
+  --text: #1a222e;
+  --text-2: #44515f;
+  --muted: #7e8a9b;
+  --dim: #aab6c6;
+  --ink: #121a26;
+  --ink-2: #20293a;
+
+  --selection-bg: #dde6f3;
+  --selection-bg-hover: #cedcef;
+
+  --primary: #1f4e79;
+  --primary-soft: #e7f0fa;
+  --primary-deep: #163a5c;
+
+  --vermilion: #c0584a;
+  --vermilion-soft: #f6e5e1;
+
+  --gold: #c08a2e;
+  --gold-deep: #936313;
+  --gold-soft: #f4ebd5;
+  --coral: #2f6fb0;
+  --amber: #5b9bd5;
+  --green: #2f8f6a;
+  --green-soft: #e2f2ec;
+  --purple: #6a5fa6;
+
+  --grad: linear-gradient(120deg, #163a5c 0%, #2f6fb0 48%, #5b9bd5 100%);
+  --grad-soft: linear-gradient(120deg, #1f4e79, #2f6fb0 60%, #5b9bd5);
+
+  --code-bg: #e7f0fa;
+  --code-text: #163a5c;
+
+  --shadow-sm: 0 1px 2px rgba(30, 60, 100, 0.05), 0 1px 1px rgba(30, 60, 100, 0.03);
+  --shadow: 0 4px 18px rgba(30, 70, 120, 0.09), 0 1px 3px rgba(30, 70, 120, 0.05);
+  --shadow-lg: 0 24px 60px -12px rgba(30, 70, 120, 0.22), 0 8px 24px -8px rgba(30, 70, 120, 0.13);
+  --hairline: rgba(30, 60, 100, 0.08);
+  --ring: rgba(31, 78, 121, 0.22);
+  --glow: rgba(91, 155, 213, 0.24);
+}
+
+/* =============================================================================
+   基础重置 / 全局元素
+   ========================================================================== */
 * {
   box-sizing: border-box;
 }
@@ -54,7 +213,8 @@ body,
   margin: 0;
   padding: 0;
   height: 100vh;
-  background: var(--bg);
+  background: var(--app-bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--sans);
   font-size: 13.5px;
@@ -62,6 +222,16 @@ body,
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
+}
+
+/* 主题切换时的丝滑过渡：仅在 .theme-anim 存在的短暂窗口内生效，避免常态重绘开销 */
+:root.theme-anim,
+:root.theme-anim * {
+  transition:
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    color 0.35s ease,
+    box-shadow 0.4s ease !important;
 }
 
 ::selection {
@@ -87,17 +257,27 @@ a:hover {
   text-decoration: underline;
 }
 
-/* 全局滚动条 (细) */
+/* 键盘焦点光环（鼠标点击不触发，只在 Tab 导航时出现）——既有科技感又不打扰 */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+  border-radius: var(--radius-sm);
+}
+
+/* 全局滚动条：默认细灰，悬停时渐变描金/主题渐变，呼应高级感 */
 *::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
 }
 *::-webkit-scrollbar-thumb {
   background: var(--border);
-  border-radius: 4px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong);
+  background: var(--grad);
+  background-clip: padding-box;
 }
 *::-webkit-scrollbar-track {
   background: transparent;

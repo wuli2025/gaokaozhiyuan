@@ -19,6 +19,7 @@ import RuleHub from "./components/RuleHub.vue";
 import CaseHub from "./components/CaseHub.vue";
 import NetworkTop from "./components/NetworkTop.vue";
 import StudentPanel from "./components/StudentPanel.vue";
+import IdolWall from "./components/IdolWall.vue";
 import MatchRun from "./components/MatchRun.vue";
 import KnowledgeRules from "./components/KnowledgeRules.vue";
 import Settings from "./components/Settings.vue";
@@ -124,6 +125,7 @@ const layoutCols = computed(
         <CaseHub v-else-if="mountedView === 'case'" />
         <NetworkTop v-else-if="mountedView === 'network'" />
         <StudentPanel v-else-if="mountedView === 'student'" />
+        <IdolWall v-else-if="mountedView === 'idol'" />
         <MatchRun v-else-if="mountedView === 'match'" />
         <KnowledgeGraph
           v-else-if="mountedView === 'graph'"
@@ -170,7 +172,8 @@ const layoutCols = computed(
   position: relative;
   height: 100vh;
   overflow: hidden;
-  background: var(--bg);
+  /* 透出 #app 的暖光画布（--app-bg），让中央工作区也沐浴在主题氛围里 */
+  background: transparent;
   display: flex;
   flex-direction: column;
 }

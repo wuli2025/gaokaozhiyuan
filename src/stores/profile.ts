@@ -8,12 +8,27 @@ export type Track = "物理" | "历史";
 
 const KEY = "polaris.gk.profile.v1";
 
+/** 志向画像维度键 */
+export const ASPIRATION_DIMS = [
+  { key: "advance", label: "升学 vs 就业", hint: "毕业即就业还是读研读博？" },
+  { key: "family", label: "家庭期望", hint: "考公/编制？专项计划？" },
+  { key: "idol", label: "偶像 / 梦想", hint: "偶像是谁、梦想职业（接偶像对话）" },
+  { key: "salaryCity", label: "薪资 / 城市", hint: "薪资期望、理想城市、能否外省" },
+  { key: "subjectAbility", label: "学科能力", hint: "各科强弱、数理底子" },
+  { key: "interest", label: "兴趣证据", hint: "做过/查过/能坚持什么" },
+  { key: "risk", label: "风险偏好", hint: "愿不愿冲名校被调剂、能否接受冷门" },
+  { key: "note", label: "其他备注", hint: "体检/视力色觉、预算、性别(军警)等" },
+] as const;
+
+export type AspirationKey = (typeof ASPIRATION_DIMS)[number]["key"];
+
 interface Persisted {
   province: string;
   track: Track;
   reselect: string[];
   score: number | null;
   rank: number | null;
+  aspiration?: Record<string, string>;
 }
 
 function load(): Persisted | null {
@@ -33,8 +48,14 @@ export const useProfileStore = defineStore("profile", () => {
   const reselect = ref<string[]>(saved?.reselect ?? []);
   const score = ref<number | null>(saved?.score ?? null);
   const rank = ref<number | null>(saved?.rank ?? null);
+  const aspiration = ref<Record<string, string>>(saved?.aspiration ?? {});
   const computing = ref(false);
   const error = ref<string>("");
+
+  /** 志向画像已填维度数（用于完成度提示） */
+  const aspirationFilled = computed(
+    () => Object.values(aspiration.value).filter((v) => v && v.trim()).length
+  );
 
   const ready = computed(
     () => !!province.value && !!track.value && rank.value != null && rank.value > 0
@@ -53,6 +74,7 @@ export const useProfileStore = defineStore("profile", () => {
           reselect: reselect.value,
           score: score.value,
           rank: rank.value,
+          aspiration: aspiration.value,
         } satisfies Persisted)
       );
     } catch {
@@ -99,6 +121,13 @@ export const useProfileStore = defineStore("profile", () => {
     reselect.value = [];
     score.value = null;
     rank.value = null;
+    aspiration.value = {};
+    persist();
+  }
+
+  /** 设置某个志向维度并持久化 */
+  function setAspiration(key: string, value: string) {
+    aspiration.value = { ...aspiration.value, [key]: value };
     persist();
   }
 
@@ -108,6 +137,8 @@ export const useProfileStore = defineStore("profile", () => {
     reselect,
     score,
     rank,
+    aspiration,
+    aspirationFilled,
     computing,
     error,
     ready,
@@ -116,6 +147,7 @@ export const useProfileStore = defineStore("profile", () => {
     toggleReselect,
     computeRank,
     setRank,
+    setAspiration,
     reset,
   };
 });
