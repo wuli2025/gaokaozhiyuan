@@ -173,7 +173,7 @@ function useDefault() {
     <section class="block">
       <div class="b-title">知识库根目录(KB 根)</div>
       <div class="b-desc">
-        Polaris 在此目录下维护
+        本助手在此目录下维护
         <code>raw/</code> · <code>output/</code> · <code>wiki/</code>
         三层结构。修改后立即生效,索引自动重扫,旧目录不会被删除。
       </div>
@@ -195,7 +195,7 @@ function useDefault() {
         <input
           class="path-in"
           v-model="draft"
-          placeholder="例如 C:\Users\mi\Polaris\PolarisKB"
+          placeholder="例如 C:\Users\mi\高考志愿\PolarisKB"
           :disabled="busy"
         />
         <button class="btn" @click="pickFolder" :disabled="busy">浏览…</button>
@@ -223,7 +223,7 @@ function useDefault() {
         <div>
           <div class="b-title">应用更新</div>
           <div class="b-desc">
-            Polaris 经 <strong>GitHub Releases</strong> 推送新版本。可随时手动检查；
+            本助手经 <strong>GitHub Releases</strong> 推送新版本。可随时手动检查；
             发现新版后<em>一键下载安装并自动重启</em>生效——即「关掉、过一会再开就是新版」。
           </div>
         </div>

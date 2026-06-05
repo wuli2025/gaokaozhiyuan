@@ -308,31 +308,6 @@ export interface ArtifactSearchHit {
 }
 
 // ──────────────────────────────────────────────────────────────
-// Skills module
-// ──────────────────────────────────────────────────────────────
-export interface Skill {
-  id: string;
-  name: string;
-  description: string;
-  source: string;
-  /** 是否已拥有可用（预装 / 已安装 / 用户自建） */
-  installed?: boolean;
-  /** 是否可删除（物理存在于用户目录，可卸载） */
-  removable?: boolean;
-}
-
-export const skills = {
-  list: () => invoke<Skill[]>("list_skills"),
-  get: (id: string) => invoke<Skill>("get_skill", { id }),
-  create: (id: string, name: string, description: string, systemPrompt: string) =>
-    invoke<void>("create_skill", { id, name, description, systemPrompt }),
-  install: (id: string) => invoke<void>("install_skill", { id }),
-  /** 从外部来源导入：本地 .md/.zip/目录 · 远程 .md/.zip · git 仓库 URL（返回导入的 id 列表） */
-  import: (source: string) => invoke<string[]>("import_skill", { source }),
-  delete: (id: string) => invoke<void>("delete_skill", { id }),
-};
-
-// ──────────────────────────────────────────────────────────────
 // CLAUDE.md 主上下文 module
 // 每个 conv 项目一份 + KB 共享一份
 // ──────────────────────────────────────────────────────────────
@@ -526,70 +501,6 @@ export const provider = {
   usage: () => invoke<UsageSummary>("usage_summary"),
   codexStatus: () => invoke<CodexStatus>("codex_status"),
   codexLogin: () => invoke<void>("codex_login"),
-};
-
-// ──────────────────────────────────────────────────────────────
-// 环境医生 module — 新用户「环境监测 + 配置安装」(claude / pwsh / PATH)
-// ──────────────────────────────────────────────────────────────
-export interface ToolStatus {
-  key: "claude" | "pwsh" | "node" | "npm";
-  name: string;
-  found: boolean;
-  version: string | null;
-  path: string | null;
-  onPath: boolean;
-  required: boolean;
-  hint: string;
-}
-export interface EnvReport {
-  os: string;
-  claude: ToolStatus;
-  pwsh: ToolStatus;
-  node: ToolStatus;
-  npm: ToolStatus;
-  claudeDir: string | null;
-  claudeDirOnUserPath: boolean;
-  /** 是否有 claude 可用的 shell (真身 PowerShell 7 / Git Bash)；false ⇒ 对话会报缺 shell */
-  shellReady: boolean;
-  ready: boolean;
-}
-export interface PathFixResult {
-  ok: boolean;
-  dir: string | null;
-  status: string;
-  message: string;
-}
-export interface EnvStreamEvent {
-  reqId: string;
-  kind: "log" | "error" | "done";
-  line?: string;
-  ok?: boolean;
-  message?: string;
-}
-/** Claude Code 更新检测结果 */
-export interface ClaudeUpdateInfo {
-  installed: boolean;
-  current: string | null;
-  latest: string | null;
-  updateAvailable: boolean;
-  checked: boolean;
-  message: string;
-}
-
-export const envDoctor = {
-  check: () => invoke<EnvReport>("env_check"),
-  fixPath: () => invoke<PathFixResult>("env_fix_path"),
-  /** 安装 Claude Code。method: "npm"(经国内镜像, 默认) | "native"(官方原生脚本, 兜底) */
-  installClaude: (method: "npm" | "native" = "npm") =>
-    invoke<string>("env_install_claude", { method }),
-  /** 安装 Node.js LTS (winget) —— npm 安装方式的前置依赖 */
-  installNode: () => invoke<string>("env_install_node"),
-  installPwsh: () => invoke<string>("env_install_pwsh"),
-  /** 检测 Claude Code 是否有新版本 (当前版本 vs npmmirror latest) */
-  checkClaudeUpdate: () => invoke<ClaudeUpdateInfo>("env_claude_update_check"),
-  /** 更新 Claude Code 到最新版 (走国内 npmmirror)，流式日志同安装 */
-  updateClaude: () => invoke<string>("env_update_claude"),
-  cancel: (reqId: string) => invoke<void>("env_cancel", { reqId }),
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -844,14 +755,11 @@ function browserStub(cmd: string, _args?: Record<string, unknown>): unknown {
     case "codex_login":
       return undefined;
     case "env_check": {
-      const tool = (key: string, name: string, found: boolean, required = false): ToolStatus => ({
-        key: key as ToolStatus["key"],
-        name,
-        found,
+      const tool = (key: string, name: string, found: boolean, required = false) => ({
+        key, name, found,
         version: found ? "(browser stub) v0.0.0" : null,
         path: found ? `/usr/local/bin/${key}` : null,
-        onPath: found,
-        required,
+        onPath: found, required,
         hint: found ? "(browser stub) 已安装" : "未安装 —— 浏览器预览无法真实检测",
       });
       return {

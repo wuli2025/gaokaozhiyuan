@@ -420,7 +420,7 @@ function conversationToMarkdown(title: string, msgs: Message[]): string {
   const lines: string[] = [`# ${title}`, ""];
   for (const msg of msgs) {
     if (msg.role === "tool") continue; // 工具调用噪声不进转写
-    const who = msg.role === "user" ? "你" : "北极星";
+    const who = msg.role === "user" ? "你" : "志愿助手";
     const body = (msg.content || "").trim();
     if (!body) continue;
     lines.push(`**${who}：**`, "", body, "");
@@ -554,7 +554,7 @@ async function deleteCurrentConv() {
 
     <div class="messages" ref="scrollEl">
       <div v-if="renderTurns.length === 0" class="hero-wrap">
-        <div class="hero">你说,北极星画</div>
+        <div class="hero">你说,志愿助手答</div>
         <div class="hero-sub">
           本地优先 · 调用 Claude Code · 维基知识库 KB-first 召回
         </div>

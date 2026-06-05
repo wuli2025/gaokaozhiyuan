@@ -253,7 +253,7 @@ function dotColor(p: ProviderView) {
 
         <div class="m-body">
           <p v-if="tab === 'universal'" class="universal-note">
-            统一供应商会同步到 Claude / Codex / Gemini —— Polaris 当前对 <b>Claude Code</b> 生效，配置方式一致。
+            统一供应商会同步到 Claude / Codex / Gemini —— 本助手当前对 <b>Claude Code</b> 生效，配置方式一致。
           </p>
 
           <!-- 预设网格 -->

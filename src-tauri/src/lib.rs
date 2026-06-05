@@ -70,16 +70,6 @@ pub fn run() {
             sql_tool::gk_score_to_rank,
             sql_tool::gk_match,
             sql_tool::gk_school_detail,
-            // Sandbox (板块⑤ 已抽离为 polaris-sandbox crate, 命令名不变)
-            polaris_sandbox::commands::sandbox_status,
-            polaris_sandbox::commands::sandbox_build_image,
-            polaris_sandbox::commands::sandbox_start,
-            polaris_sandbox::commands::sandbox_stop,
-            polaris_sandbox::commands::sandbox_exec,
-            // CubeSandbox (E2B) 后端 — 「替换 Docker」可选后端
-            polaris_sandbox::e2b::cube_config_get,
-            polaris_sandbox::e2b::cube_config_set,
-            polaris_sandbox::e2b::cube_status,
             // Conv (项目 + 对话历史)
             conv::conv_list_projects,
             conv::conv_create_project,
@@ -104,13 +94,6 @@ pub fn run() {
             claude_md::claude_md_kb_info,
             claude_md::claude_md_read,
             claude_md::claude_md_write,
-            // Skills
-            skills::list_skills,
-            skills::get_skill,
-            skills::create_skill,
-            skills::install_skill,
-            skills::import_skill,
-            skills::delete_skill,
             // API 供应商坞 + 用量看板
             provider::provider_list,
             provider::provider_switch,
@@ -119,16 +102,7 @@ pub fn run() {
             provider::usage_summary,
             provider::codex_status,
             provider::codex_login,
-            // 环境医生 (环境监测 + 配置安装)
-            doctor::env_check,
-            doctor::env_fix_path,
-            doctor::env_install_claude,
-            doctor::env_install_node,
-            doctor::env_install_pwsh,
-            doctor::env_claude_update_check,
-            doctor::env_update_claude,
-            doctor::env_cancel,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running Polaris application");
+        .expect("error while running 高考志愿助手 application");
 }

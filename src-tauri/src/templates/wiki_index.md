@@ -3,9 +3,9 @@ title: 知识库首页
 category: 概念
 ---
 
-# Polaris 维基库 · 首页
+# 高考志愿 · 知识库首页
 
-> 这里是 Polaris 全局维基库 (`~/Polaris/PolarisKB/`) 的入口页。
+> 这里是高考志愿知识库 (`~/高考志愿/PolarisKB/`) 的入口页。
 > 在「管理 → Ingest」可将本机 .md 文件加入 KB;搜索面板支持关键词加权评分召回。
 
 ## 第 0 节 · LLM 快速定位表(LLM Cheatsheet)

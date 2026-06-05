@@ -39,7 +39,7 @@ pub fn project_root() -> Option<PathBuf> {
 }
 
 fn projects_root() -> Option<PathBuf> {
-    UserDirs::new().map(|u| u.home_dir().join("Polaris").join("projects"))
+    UserDirs::new().map(|u| u.home_dir().join("高考志愿").join("projects"))
 }
 
 fn project_claude_md_path(project_id: &str) -> Option<PathBuf> {
@@ -225,7 +225,7 @@ pub fn render_for_project(project_id: Option<&str>, _user_prompt: &str) -> Strin
 
     let mut out = String::from("\n\n## 主上下文 (CLAUDE.md + 维基库 一体注入)\n\n");
     out.push_str(
-        "以下是 Polaris 为你准备的行为指南与**结构化维基库**。知识库就在你的工作目录下, \
+        "以下是高考志愿助手为你准备的行为指南与**结构化维基库**。知识库就在你的工作目录下, \
          你可以用 Read/Glob/Grep 沿双链直接打开任意页面取证 —— 这就是本库「调用知识库」的方式, \
          不需要 (也没有) kb_search 之类的召回工具:\n\n",
     );

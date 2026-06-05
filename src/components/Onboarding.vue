@@ -31,7 +31,7 @@ async function pickFolder() {
   const picked = await open({
     directory: true,
     multiple: false,
-    title: "选择 Polaris 工作文件夹",
+    title: "选择 高考志愿 工作文件夹",
   });
   if (typeof picked === "string" && picked) {
     draft.value = picked;
@@ -72,13 +72,13 @@ async function finish() {
 
       <!-- 第一步：欢迎 -->
       <template v-if="step === 1">
-        <h1 class="title">欢迎来到北极星</h1>
+        <h1 class="title">欢迎来到高考志愿助手</h1>
         <p class="lead">
-          Polaris 是一个本地优先的 AI 工作台。你的对话、知识库与生成的成品，
+          高考志愿助手是一个本地优先的 AI 工作台。你的对话、知识库与生成的成品，
           都会安放在<strong>你自己的电脑</strong>上一个叫「工作文件夹」的地方。
         </p>
         <p class="lead dim">
-          在开始之前，先帮你把这个文件夹安顿好——它是你与北极星一切协作的落脚点。
+          在开始之前，先帮你把这个文件夹安顿好——它是你与本助手一切协作的落脚点。
         </p>
         <div class="actions">
           <button class="btn primary" @click="step = 2">下一步 · 选择工作文件夹</button>
@@ -89,7 +89,7 @@ async function finish() {
       <template v-else>
         <h1 class="title">把工作文件夹放在哪里？</h1>
         <p class="lead">
-          Polaris 会在这个目录下维护三层结构：
+          本助手会在这个目录下维护三层结构：
           <code>raw/</code> 原始素材 · <code>output/</code> 生成成品 ·
           <code>wiki/</code> 知识维基。
         </p>
@@ -109,7 +109,7 @@ async function finish() {
           <input
             v-model="draft"
             class="path"
-            :placeholder="defaultRoot || 'C:\\Users\\you\\Polaris\\PolarisKB'"
+            :placeholder="defaultRoot || 'C:\\Users\\you\\高考志愿\\PolarisKB'"
             :disabled="busy"
           />
           <button class="btn ghost" @click="pickFolder" :disabled="busy">浏览…</button>
@@ -123,7 +123,7 @@ async function finish() {
         <div class="actions split">
           <button class="btn text" @click="step = 1" :disabled="busy">返回</button>
           <button class="btn primary" @click="finish" :disabled="busy">
-            {{ busy ? "正在创建工作文件夹…" : "进入北极星" }}
+            {{ busy ? "正在创建工作文件夹…" : "进入助手" }}
           </button>
         </div>
       </template>

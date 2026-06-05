@@ -155,7 +155,7 @@ onMounted(refresh);
           :title="kbInfo?.absPath"
         >
           <span class="dot" :class="{ on: kbInfo?.active }" />
-          <span class="rel">PolarisKB</span>
+          <span class="rel">志愿知识库</span>
           <span
             class="badge"
             :class="{ on: kbInfo?.active, miss: !kbInfo?.exists }"

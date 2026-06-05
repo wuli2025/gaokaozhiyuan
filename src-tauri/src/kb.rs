@@ -59,16 +59,16 @@ pub fn init(app: &AppHandle) -> Result<()> {
 fn default_kb_root() -> Result<PathBuf> {
     let user = UserDirs::new().ok_or_else(|| anyhow::anyhow!("no user dir"))?;
     let home = user.home_dir();
-    Ok(home.join("Polaris").join("PolarisKB"))
+    Ok(home.join("高考志愿").join("PolarisKB"))
 }
 
 // ───────────────────────── 默认资料库播种 ─────────────────────────
 
-/// 首启一次性播种「默认资料库」: 把随安装包打进来的毛主席资料库拷到 KB 的 `raw/` 下。
+/// 首启一次性播种「默认资料库」: 把随安装包打进来的高考志愿资料库拷到 KB 的 `raw/` 下。
 /// 用一次性 marker(`<root>/.polaris_seeded`)记录, 之后即便用户在「管理」里清空、
 /// 或在「浏览」里逐条删除, 重启也 **不会** 再次重播 —— 尊重用户对资料库的删除。
 fn seed_default_kb(app: &AppHandle, root: &Path) {
-    let marker = root.join(".polaris_seeded");
+    let marker = root.join(".gaokao_seeded");
     if marker.exists() {
         return;
     }
@@ -79,7 +79,7 @@ fn seed_default_kb(app: &AppHandle, root: &Path) {
     let _ = fs::write(&marker, b"seeded\n");
 }
 
-/// 定位打进安装包的资料库种子目录(其内含 `毛主席/`)。
+/// 定位打进安装包的资料库种子目录(其内含高考志愿资料)。
 /// 发布版走 Tauri `resource_dir`; 开发期回退到 `src-tauri/resources/seed-kb`。
 fn seed_source(app: &AppHandle) -> Option<PathBuf> {
     if let Ok(rd) = app.path().resource_dir() {
@@ -133,7 +133,7 @@ struct AppSettings {
 }
 
 fn settings_path() -> Result<PathBuf> {
-    let pd = ProjectDirs::from("com", "polaris", "polaris-app")
+    let pd = ProjectDirs::from("com", "gaokaozhiyuan", "gaokaozhiyuan")
         .ok_or_else(|| anyhow::anyhow!("no config dir"))?;
     let dir = pd.config_dir().to_path_buf();
     fs::create_dir_all(&dir)?;
@@ -1016,7 +1016,7 @@ pub fn render_kb_context(query: &str, top_k: usize) -> String {
         return String::new();
     }
     let mut out = String::from("\n\n## 维基库召回 (KB-first)\n\n");
-    out.push_str("以下文件由 Polaris 在你的本地知识库中按关键词加权评分召回,优先以此回答:\n\n");
+    out.push_str("以下文件由高考志愿助手在你的本地知识库中按关键词加权评分召回,优先以此回答:\n\n");
     let root = KB_ROOT.read().clone();
     for (i, h) in hits.iter().enumerate() {
         let full = root.join(&h.path);

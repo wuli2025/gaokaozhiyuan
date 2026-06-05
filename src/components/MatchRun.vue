@@ -244,7 +244,7 @@ const pageInfo = computed(() => {
     <!-- ══════════ 结果工作台 ══════════ -->
     <div v-else class="board" :class="{ busy: loading }">
       <header class="hero pk-hero">
-        <div class="hero-eyebrow">★ POLARIS · 智能填报 · 位次法 · 冲 / 稳 / 保</div>
+        <div class="hero-eyebrow">★ 高考志愿 · 智能填报 · 位次法 · 冲 / 稳 / 保</div>
         <div class="hero-row">
           <h1 class="hero-title">智能<span class="lite">填报</span></h1>
           <button class="edit-btn" @click="editing = true; draftScore = profile.score">修改成绩</button>

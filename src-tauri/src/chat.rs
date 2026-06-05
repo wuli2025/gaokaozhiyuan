@@ -193,7 +193,7 @@ pub async fn chat_send(app: AppHandle, args: ChatSendArgs) -> Result<String, Str
         final_prompt.push_str("\n---\n\n");
     }
 
-    // 2. 输出文件约定 (Polaris) — 让成品文件落到产物目录, 侧边栏即可预览
+    // 2. 输出文件约定 (高考志愿助手) — 让成品文件落到产物目录, 侧边栏即可预览
     final_prompt.push_str(&output_convention(&art_dir));
     final_prompt.push_str("\n\n---\n\n");
 
@@ -628,7 +628,7 @@ fn spawn_on_host(prompt: &str, perm: &str, art_dir: &Path) -> Result<Child, Stri
         extra_dirs.push("--add-dir".into());
         extra_dirs.push(kb_root.to_string_lossy().to_string());
     }
-    // 产物目录在 ~/Polaris 下, 不在 cwd 子树, 显式放行 claude 可写入
+    // 产物目录在 ~/高考志愿 下, 不在 cwd 子树, 显式放行 claude 可写入
     if art_dir.exists() && !art_dir.starts_with(&cwd) {
         extra_dirs.push("--add-dir".into());
         extra_dirs.push(art_dir.to_string_lossy().to_string());
@@ -684,7 +684,7 @@ fn conversation_dir(conv_id: Option<&str>) -> PathBuf {
         kb_root.join("conversations").join(id)
     } else {
         UserDirs::new()
-            .map(|u| u.home_dir().join("Polaris").join("data").join("artifacts"))
+            .map(|u| u.home_dir().join("高考志愿").join("data").join("artifacts"))
             .unwrap_or_else(|| PathBuf::from("artifacts"))
             .join(id)
     }
@@ -1104,7 +1104,7 @@ fn conversation_roots() -> Vec<PathBuf> {
         roots.push(kb_root.join("conversations"));
     }
     if let Some(u) = UserDirs::new() {
-        roots.push(u.home_dir().join("Polaris").join("data").join("artifacts"));
+        roots.push(u.home_dir().join("高考志愿").join("data").join("artifacts"));
     }
     roots
 }

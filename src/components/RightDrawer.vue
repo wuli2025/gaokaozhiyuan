@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, watch } from "vue";
 import { marked } from "marked";
 import {
   X,
@@ -14,50 +14,16 @@ import {
   File as FileIcon,
   Image as ImageIcon,
   Loader,
-  Plus,
-  EllipsisVertical,
-  PencilLine,
-  Trash2,
-  CornerDownLeft,
-  Workflow,
   PanelRightClose,
   PanelRightOpen,
 } from "@lucide/vue";
 import { useAppStore } from "../stores/app";
 import { useArtifactsStore } from "../stores/artifacts";
-import { useWorkflowsStore, type WorkflowPack } from "../stores/workflows";
 import { artifacts as artifactsApi, type ArtifactEntry } from "../tauri";
 
 const app = useAppStore();
 const artifacts = useArtifactsStore();
-const workflows = useWorkflowsStore();
-const activeTab = ref<"artifacts" | "ref" | "workflow">("artifacts");
-
-// ───── 工作流包：三点菜单 + 使用 ─────
-const wfMenuOpen = ref<string | null>(null);
-function toggleWfMenu(id: string) {
-  wfMenuOpen.value = wfMenuOpen.value === id ? null : id;
-}
-function closeWfMenu() {
-  wfMenuOpen.value = null;
-}
-function onUsePack(p: WorkflowPack) {
-  closeWfMenu();
-  workflows.usePack(p);
-  app.setView("chat"); // 切到对话，让提示词落进输入框
-}
-function onEditPack(p: WorkflowPack) {
-  closeWfMenu();
-  workflows.openEdit(p);
-}
-function onDeletePack(p: WorkflowPack) {
-  closeWfMenu();
-  if (confirm(`删除工作流包「${p.name}」？此操作不可撤销。`)) {
-    workflows.removePack(p.id);
-  }
-}
-onMounted(() => window.addEventListener("click", closeWfMenu));
-onBeforeUnmount(() => window.removeEventListener("click", closeWfMenu));
+const activeTab = ref<"artifacts" | "ref">("artifacts");
 
 // ───── 参考资料：本对话产物文件夹（按时间倒序，点开即在本栏预览） ─────
 const refFiles = ref<ArtifactEntry[]>([]);
@@ -265,7 +231,6 @@ function fmtSize(n: number): string {
             v-for="t in [
               { k: 'artifacts', l: '输出产物' },
               { k: 'ref', l: '参考资料' },
-              { k: 'workflow', l: '工作流包' },
             ]"
             :key="t.k"
             class="tab"
@@ -315,75 +280,6 @@ function fmtSize(n: number): string {
               <div class="empty-text">
                 本对话还没有产出文件。<br />
                 生成 HTML / 报告 / PPT 等成品后,会按时间出现在这里,点开即预览。
-              </div>
-            </div>
-          </template>
-
-          <!-- 工作流包：结构化提示词库（创建 / 使用 / 修改 / 删除） -->
-          <template v-else-if="activeTab === 'workflow'">
-            <div class="wf-head">
-              <span class="wf-count">{{ workflows.packs.length }} 个工作流包</span>
-              <button
-                class="wf-create"
-                title="创建工作流包"
-                @click="workflows.openCreate()"
-              >
-                <Plus :size="13" :stroke-width="2.2" />
-                <span>创建</span>
-              </button>
-            </div>
-
-            <ul v-if="workflows.packs.length" class="wf-list">
-              <li
-                v-for="p in workflows.packs"
-                :key="p.id"
-                class="wf-card"
-                @click="onUsePack(p)"
-              >
-                <span class="wf-bar" :style="{ background: p.color }" />
-                <div class="wf-main">
-                  <div class="wf-name">{{ p.name }}</div>
-                  <div v-if="p.description" class="wf-desc">
-                    {{ p.description }}
-                  </div>
-                  <div class="wf-meta">
-                    <Workflow :size="11" :stroke-width="1.8" />
-                    {{ p.steps.length }} 环节
-                  </div>
-                </div>
-                <div class="wf-actions" @click.stop>
-                  <button class="wf-use" title="填入对话框" @click="onUsePack(p)">
-                    <CornerDownLeft :size="12" :stroke-width="2" />
-                    <span>使用</span>
-                  </button>
-                  <div class="wf-menu-wrap">
-                    <button
-                      class="wf-dots"
-                      title="更多"
-                      @click.stop="toggleWfMenu(p.id)"
-                    >
-                      <EllipsisVertical :size="15" :stroke-width="2" />
-                    </button>
-                    <div v-if="wfMenuOpen === p.id" class="wf-menu" @click.stop>
-                      <button class="wf-mi" @click="onEditPack(p)">
-                        <PencilLine :size="13" :stroke-width="1.8" />
-                        <span>修改</span>
-                      </button>
-                      <button class="wf-mi danger" @click="onDeletePack(p)">
-                        <Trash2 :size="13" :stroke-width="1.8" />
-                        <span>删除</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            </ul>
-
-            <div v-else class="empty">
-              <div class="empty-glyph">◈</div>
-              <div class="empty-text">
-                把你常用的提示词存成「工作流包」。<br />
-                点右上「创建」编排好环节,下次点「使用」即可填入对话框。
               </div>
             </div>
           </template>
@@ -745,186 +641,6 @@ function fmtSize(n: number): string {
   font-size: 11px;
   color: var(--muted);
   margin-top: 1px;
-}
-
-/* ───────── 工作流包 ───────── */
-.wf-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border-soft);
-}
-.wf-count {
-  font-size: 11.5px;
-  color: var(--muted);
-  letter-spacing: 0.3px;
-}
-.wf-create {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: var(--panel);
-  color: var(--text-2);
-  font-size: 12px;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.wf-create:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-soft);
-}
-.wf-list {
-  list-style: none;
-  margin: 0;
-  padding: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.wf-card {
-  position: relative;
-  display: flex;
-  align-items: stretch;
-  gap: 10px;
-  padding: 10px 10px 10px 0;
-  background: var(--panel);
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  cursor: pointer;
-  overflow: hidden;
-  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
-}
-.wf-card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow);
-}
-.wf-card:hover .wf-use {
-  opacity: 1;
-}
-.wf-bar {
-  flex-shrink: 0;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-}
-.wf-main {
-  flex: 1;
-  min-width: 0;
-  padding-left: 2px;
-}
-.wf-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wf-desc {
-  font-size: 11.5px;
-  color: var(--muted);
-  margin-top: 2px;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.wf-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--dim);
-}
-.wf-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding-right: 8px;
-  flex-shrink: 0;
-}
-.wf-use {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border: 1px solid var(--primary);
-  border-radius: 7px;
-  background: var(--primary-soft);
-  color: var(--primary-deep);
-  font-size: 11.5px;
-  font-weight: 500;
-  opacity: 0.85;
-  transition: opacity 0.15s, background 0.15s;
-}
-.wf-use:hover {
-  background: var(--primary);
-  color: #fff;
-}
-.wf-menu-wrap {
-  position: relative;
-}
-.wf-dots {
-  width: 26px;
-  height: 26px;
-  border: none;
-  background: transparent;
-  color: var(--muted);
-  border-radius: 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.wf-dots:hover {
-  background: var(--selection-bg);
-  color: var(--text);
-}
-.wf-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 30;
-  min-width: 116px;
-  padding: 5px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  box-shadow: var(--shadow-lg);
-  animation: wf-pop 130ms ease;
-}
-@keyframes wf-pop {
-  from {
-    opacity: 0;
-    transform: translateY(-3px);
-  }
-}
-.wf-mi {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 7px 10px;
-  border: none;
-  background: transparent;
-  color: var(--text-2);
-  font-size: 12.5px;
-  border-radius: 6px;
-  text-align: left;
-}
-.wf-mi:hover {
-  background: var(--bg-soft);
-  color: var(--text);
-}
-.wf-mi.danger {
-  color: var(--vermilion);
-}
-.wf-mi.danger:hover {
-  background: var(--vermilion-soft);
 }
 
 </style>
