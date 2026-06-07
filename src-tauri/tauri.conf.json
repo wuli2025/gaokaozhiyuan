@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "高考志愿",
-  "version": "0.2.10",
+  "productName": "高智愿",
+  "version": "0.2.11",
   "identifier": "com.gaokaozhiyuan.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "高考志愿",
+        "title": "高智愿",
         "width": 1280,
         "height": 820,
         "minWidth": 960,
@@ -47,11 +47,15 @@
       "resources/seed-kb/**/*"
     ],
     "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
       "icons/icon.ico"
     ],
     "category": "Productivity",
-    "shortDescription": "高考志愿填报 · 智能冲稳保",
-    "longDescription": "高考志愿填报助手，集成位次法匹配、Wiki 知识库、升学路径规划，为学生和家庭提供数据驱动的志愿填报决策支持。",
+    "shortDescription": "高智愿 · 高考志愿智能冲稳保",
+    "longDescription": "高智愿——高考志愿填报助手，集成位次法匹配、Wiki 知识库、升学路径规划，为学生和家庭提供数据驱动的志愿填报决策支持。",
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"

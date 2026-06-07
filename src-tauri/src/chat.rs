@@ -113,6 +113,12 @@ pub struct ChatSendArgs {
     /// 把结构化报告写进 `wiki/students/我的档案.md`(含可解析的 JSON 块)。
     #[serde(default)]
     pub gen_report: bool,
+    /// 学生画像快照(前端 localStorage, 模型看不到, 随消息传入):
+    /// {province, track, subjects:[], score, rank, aspiration:{}}。
+    /// 有则后端确定性跑「智能填报锁池」(gk_match), 把可报志愿池作为事实注入，
+    /// 让模型只在池内做冲/稳/保推荐。
+    #[serde(default)]
+    pub profile: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -222,6 +228,16 @@ pub async fn chat_send(app: AppHandle, args: ChatSendArgs) -> Result<String, Str
     if args.gen_report {
         final_prompt.push_str(&personal_report_directive());
         final_prompt.push_str("\n\n---\n\n");
+    }
+
+    // 2.66 智能填报锁池: 把考生画像 + 确定性算出的可报志愿池作为事实注入,
+    //      让模型答志愿问题时只在池内冲/稳/保推荐(产品的事实基础)。
+    if let Some(profile) = &args.profile {
+        let block = student_pool_block(profile);
+        if !block.is_empty() {
+            final_prompt.push_str(&block);
+            final_prompt.push_str("\n\n---\n\n");
+        }
     }
 
     // 2.7 生图能力检测: 用户想生成图片, 但供应商坞里全是文本/代码大模型, 没有一个能真生图。
@@ -656,7 +672,9 @@ fn spawn_on_host(prompt: &str, perm: &str, art_dir: &Path) -> Result<Child, Stri
     args.push("--allowedTools".into());
     args.push(allowed_tools_for(perm));
     args.push(perm_flag);
-    args.push(prompt.to_string());
+    // ⚠ prompt 不再作为命令行参数传入！全量 KB 注入后 final_prompt 动辄上百 KB,
+    // Windows CreateProcessW 命令行上限 ~32KB → os error 206 (文件名或扩展名太长)。
+    // 改走 stdin: `--print` 模式下 claude 会从管道读 prompt, 无长度限制。
 
     // 解析 claude 可执行文件的全路径再 spawn, 而非裸名 "claude":
     // npm 装只在 PATH 放 `claude.cmd`, 而 Windows CreateProcessW 解析裸名只补 `.exe`、不查 PATHEXT
@@ -668,13 +686,25 @@ fn spawn_on_host(prompt: &str, perm: &str, art_dir: &Path) -> Result<Child, Stri
     let mut cmd = Command::new(&claude_bin);
     cmd.args(&args)
         .current_dir(&cwd)
-        .stdin(Stdio::null())
+        .stdin(Stdio::piped()) // prompt 经此管道写入, 见下
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     no_window(&mut cmd); // 隐藏式: 每次发消息不再弹出黑色终端窗口
-    let child = cmd
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("调起宿主机 claude CLI 失败: {}", e))?;
+
+    // 把 prompt 写进 stdin 再关闭(EOF), claude 读到 EOF 即开始处理。
+    // 用独立线程写, 避免 prompt 超过管道缓冲(~64KB)时与读 stdout 互相阻塞死锁。
+    if let Some(mut stdin) = child.stdin.take() {
+        let payload = prompt.as_bytes().to_vec();
+        std::thread::spawn(move || {
+            use std::io::Write;
+            let _ = stdin.write_all(&payload);
+            let _ = stdin.flush();
+            // stdin 在此 drop → 关闭管道 → claude 收到 EOF
+        });
+    }
     Ok(child)
 }
 
@@ -876,6 +906,179 @@ fn personal_report_directive() -> String {
         personal_dir = personal_dir,
         report_path = report_path,
     )
+}
+
+/// 把学生画像 + 确定性「智能填报锁池」(gk_match) 注入成「可报志愿池」事实块。
+/// 这是产品的事实地基: 模型答志愿/选校/选专业时, 只能在这个池子里冲/稳/保推荐。
+/// 前端把 localStorage 的画像快照传进来(模型自己看不到 localStorage); 硬字段不全则不注入。
+fn student_pool_block(profile: &Value) -> String {
+    let province = profile
+        .get("province")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let track = profile
+        .get("track")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let score = profile.get("score").and_then(|v| v.as_i64());
+    let rank = profile.get("rank").and_then(|v| v.as_i64());
+    let subjects: Vec<String> = profile
+        .get("subjects")
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // 硬字段不全(可能只填了一半) → 不注入池子, 免得误导
+    if province.is_empty() || (rank.is_none() && score.is_none()) {
+        return String::new();
+    }
+    let subj_disp = if subjects.is_empty() {
+        "—".to_string()
+    } else {
+        subjects.join("、")
+    };
+
+    let mut out = String::new();
+    out.push_str("## 考生智能填报锁池 (确定性事实 · 本产品的事实地基)\n\n");
+    out.push_str(
+        "下面是**当前正在跟你对话的考生**在「智能填报」里录入的硬条件, 以及系统据此\
+**确定性算出的「可报志愿池」**(按其分数/位次/选科过滤后真实可填的院校专业, 已分冲/稳/保)。\
+**这是该考生一切志愿建议的事实基础, 一定要用上**:\n\n",
+    );
+    out.push_str("### 考生硬条件\n");
+    out.push_str(&format!(
+        "- 省份: {province}\n- 首选科类: {track}类\n- 选科: {subj_disp}\n"
+    ));
+    if let Some(s) = score {
+        out.push_str(&format!("- 分数: {s}\n"));
+    }
+    if let Some(r) = rank {
+        out.push_str(&format!("- 位次: {r}\n"));
+    }
+
+    // 软条件: 志向画像八维
+    if let Some(asp) = profile.get("aspiration").and_then(|v| v.as_object()) {
+        let labels = [
+            ("advance", "升学/就业"),
+            ("family", "家庭期望"),
+            ("idol", "偶像/梦想"),
+            ("salaryCity", "薪资/城市"),
+            ("subjectAbility", "学科能力"),
+            ("interest", "兴趣证据"),
+            ("risk", "风险偏好"),
+            ("note", "其他备注"),
+        ];
+        let mut soft = String::new();
+        for (k, label) in labels {
+            if let Some(v) = asp.get(k).and_then(|x| x.as_str()) {
+                let v = v.trim();
+                if !v.is_empty() {
+                    soft.push_str(&format!("- {label}: {v}\n"));
+                }
+            }
+        }
+        if !soft.is_empty() {
+            out.push_str("\n### 考生志向画像 (软条件, 真适配判断据此)\n");
+            out.push_str(&soft);
+        }
+    }
+
+    // 组装 gk_match 入参(共用硬字段)
+    let base = |extra: Value| -> Value {
+        let mut m = serde_json::Map::new();
+        m.insert("province".into(), serde_json::json!(province));
+        m.insert("track".into(), serde_json::json!(track));
+        if !subjects.is_empty() {
+            m.insert("subjects".into(), serde_json::json!(subjects));
+        }
+        if let Some(r) = rank {
+            m.insert("rank".into(), serde_json::json!(r));
+        } else if let Some(s) = score {
+            m.insert("score".into(), serde_json::json!(s));
+        }
+        m.insert("sort".into(), serde_json::json!("prob"));
+        if let Value::Object(e) = extra {
+            for (k, v) in e {
+                m.insert(k, v);
+            }
+        }
+        Value::Object(m)
+    };
+
+    // 全量取概况(stats + facets)
+    match crate::sql_tool::gk_match(base(serde_json::json!({ "page_size": 1 }))) {
+        Ok(res) => {
+            let st = &res["stats"];
+            out.push_str(&format!(
+                "\n### 可报志愿池概况\n共 **{}** 个可报(院校×专业): 冲 {} · 稳 {} · 保 {}; \
+其中 985 {} · 211 {} · 双一流 {}。\n",
+                st["total"], st["charge"], st["steady"], st["safe"], st["c985"], st["c211"],
+                st["double_first"]
+            ));
+            if let Some(regs) = res["facets"]["region"].as_array() {
+                let top: Vec<String> = regs
+                    .iter()
+                    .take(8)
+                    .filter_map(|f| Some(format!("{}({})", f["key"].as_str()?, f["count"].as_i64()?)))
+                    .collect();
+                if !top.is_empty() {
+                    out.push_str(&format!("- 地区分布(Top): {}\n", top.join("、")));
+                }
+            }
+        }
+        Err(e) => {
+            out.push_str(&format!(
+                "\n_(锁池计算暂不可用: {e}。请引导考生到「智能填报」页核对 省份/选科/位次。)_\n"
+            ));
+            return out;
+        }
+    }
+
+    // 每档取代表性若干条
+    out.push_str("\n### 池内代表院校专业 (每档列若干, 完整池在「智能填报」页)\n");
+    for tier in ["冲", "稳", "保"] {
+        if let Ok(res) = crate::sql_tool::gk_match(base(serde_json::json!({ "tiers": [tier], "page_size": 24 })))
+        {
+            let rows = match res["rows"].as_array() {
+                Some(r) if !r.is_empty() => r,
+                _ => continue,
+            };
+            out.push_str(&format!("\n**{tier}档** (列前 {}):\n", rows.len()));
+            for r in rows {
+                let school = r["school"].as_str().unwrap_or("");
+                let region = r["region"].as_str().unwrap_or("");
+                let level = r["level"].as_str().unwrap_or("");
+                let major = r["major"].as_str().unwrap_or("");
+                let sg = r["subject_group"].as_str().unwrap_or("");
+                let prob = r["prob"].as_f64().unwrap_or(0.0) * 100.0;
+                let mr = r["min_rank"].as_i64().unwrap_or(0);
+                out.push_str(&format!(
+                    "- {school} · {region} · {level} | {major} | 选科:{sg} | 概率{prob:.0}% · 最低位次{mr}\n"
+                ));
+            }
+        }
+    }
+
+    out.push_str(
+        "\n### 使用规则 (重要)\n\
+1. 回答该考生的志愿/选校/选专业问题时, **只能从上面这个可报志愿池里挑**, 按冲/稳/保讲清楚, \
+不要推荐池子外的院校, 更不要凭空编造。\n\
+2. 上面每档只列了代表性的若干条, 池子里还有更多。需要更多候选 / 换地区换层次时, \
+引导考生到「智能填报」页用筛选器看完整池子。\n\
+3. 结合上面的「考生志向画像」做真适配判断(学不学得下去 / 合不合志向 / 有没有会后悔的坑), \
+并沿 wiki 双链取证(专业页 / 行业页 / 祛魅卡 / 案例)。\n\
+4. 位次 / 概率 / 选科匹配是规则引擎算出的**事实**, 不要自行改写或质疑数值。\n",
+    );
+
+    out
 }
 
 /// 标准 Base64 编码 (无外部依赖) — 给图片产物拼 data URL 用

@@ -17,11 +17,27 @@ onMounted(() => {
   if (!pwiki.reportLoaded) pwiki.loadReport();
 });
 
-// 拖拽上传（仅当前视图是档案页时响应）
+// 拖拽上传（窗口级：当前视图是档案页时，整页任意位置都能放下文件）
 const { isOver: dropOver } = useFileDrop({
   active: () => app.view === "student",
-  onDrop: (paths) => pwiki.upload(paths),
+  onDrop: (paths) => handleUpload(paths),
 });
+
+// 上传后是否自动识别整理（默认开）。关掉则只入库、不自动生成报告。
+const autoRecognize = ref(true);
+
+/**
+ * 统一的上传入口：先把文件入库，成功后（若开了自动识别）直接触发一键整理，
+ * 让用户"放下文件 → 自动出报告"，无需再手点。
+ */
+async function handleUpload(paths: string[]) {
+  if (!paths.length) return;
+  await pwiki.upload(paths);
+  if (pwiki.error) return; // 有文件上传失败时不自动识别，避免基于残缺资料出报告
+  if (autoRecognize.value && pwiki.materials.length && !pwiki.generating) {
+    await pwiki.generateReport();
+  }
+}
 
 // 按钮选择文件上传
 async function pickFiles() {
@@ -32,7 +48,7 @@ async function pickFiles() {
   });
   if (!picked) return;
   const paths = Array.isArray(picked) ? picked : [picked];
-  await pwiki.upload(paths);
+  await handleUpload(paths);
 }
 
 function fmtSize(n: number): string {
@@ -93,6 +109,17 @@ const sysHints = computed(() => {
 
 <template>
   <div class="page">
+    <!-- 全页拖拽遮罩：拖文件进窗口时，整页任意位置都能放下 -->
+    <div v-if="dropOver" class="page-drop-overlay">
+      <div class="pdo-inner">
+        <div class="pdo-icon">📥</div>
+        <div class="pdo-title">松手即上传到「我的个人 wiki」</div>
+        <div class="pdo-sub">
+          支持 PDF / Word / Excel / PPT / 图片 / 文本 · 整页任意位置都能放下<template v-if="autoRecognize"> · 上传后自动识别整理</template>
+        </div>
+      </div>
+    </div>
+
     <header class="ph">
       <div class="eyebrow">★ 我的志向画像 · LLMWiki</div>
       <h1>我的档案</h1>
@@ -173,13 +200,22 @@ const sysHints = computed(() => {
     >
       <div class="drop-icon">📎</div>
       <div class="drop-main">
-        <b>拖拽文件到这里，或点击选择上传</b>
+        <b>整页任意位置拖入文件，或点击选择上传</b>
         <small>支持 PDF / Word / Excel / PPT / 图片 / 纯文本，自动转入你的个人资料库</small>
       </div>
       <button class="btn primary" @click.stop="pickFiles" :disabled="pwiki.uploading">
         {{ pwiki.uploading ? "上传中…" : "选择文件" }}
       </button>
     </div>
+
+    <label class="auto-rec" :class="{ on: autoRecognize }">
+      <input type="checkbox" v-model="autoRecognize" />
+      <span class="ar-box">{{ autoRecognize ? "✓" : "" }}</span>
+      <span class="ar-text">
+        <b>上传后自动识别整理</b>
+        <small>放下文件即自动读取并生成结构化考试报告，无需再点「一键整理」</small>
+      </span>
+    </label>
 
     <div v-if="pwiki.materials.length" class="card files">
       <div v-for="f in pwiki.materials" :key="f.relPath" class="frow">
@@ -324,6 +360,24 @@ const sysHints = computed(() => {
 .drop-main { flex: 1; }
 .drop-main b { display: block; color: var(--ink); font-size: 14px; }
 .drop-main small { color: var(--muted); font-size: 12px; }
+
+/* 全页拖拽遮罩 */
+.page-drop-overlay { position: fixed; inset: 0; z-index: 60; pointer-events: none; display: flex; align-items: center; justify-content: center; background: rgba(40, 22, 13, .42); backdrop-filter: blur(3px); animation: pdoIn .12s ease-out; }
+.page-drop-overlay::after { content: ""; position: absolute; inset: 16px; border: 3px dashed rgba(255, 255, 255, .7); border-radius: 22px; }
+.pdo-inner { position: relative; text-align: center; color: #fff; padding: 30px 40px; }
+.pdo-icon { font-size: 52px; }
+.pdo-title { font-family: var(--serif); font-size: 22px; font-weight: 800; margin-top: 10px; }
+.pdo-sub { font-size: 13px; opacity: .92; margin-top: 8px; }
+@keyframes pdoIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* 上传后自动识别 · 开关 */
+.auto-rec { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; margin: -6px 0 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); cursor: pointer; transition: border-color .15s, background .15s; }
+.auto-rec.on { border-color: #c4e2cf; background: var(--green-soft); }
+.auto-rec input { display: none; }
+.ar-box { flex: none; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; background: var(--panel); margin-top: 1px; }
+.auto-rec.on .ar-box { background: var(--green); border-color: var(--green); }
+.ar-text b { display: block; font-size: 13.5px; color: var(--ink); }
+.ar-text small { color: var(--muted); font-size: 12px; }
 
 .files { padding: 8px 14px; margin-bottom: 10px; }
 .frow { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border-soft); }

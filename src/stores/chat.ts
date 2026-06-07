@@ -97,6 +97,7 @@ export const useChatStore = defineStore("chatRuntime", () => {
       skillIds?: string[];
       goal?: string;
       consultMao?: boolean;
+      profile?: Record<string, unknown>;
     }
   ) {
     const arr = ensureArr(convId);
@@ -113,6 +114,7 @@ export const useChatStore = defineStore("chatRuntime", () => {
         skillIds: opts.skillIds,
         goal: opts.goal,
         consultMao: opts.consultMao,
+        profile: opts.profile,
         conversationId: convId,
       });
       reqByConv.value[convId] = reqId;

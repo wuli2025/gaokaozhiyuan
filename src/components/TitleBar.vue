@@ -32,7 +32,7 @@ async function close() { try { await win?.close(); } catch { /* noop */ } }
   <div class="titlebar" data-tauri-drag-region>
     <div class="tb-brand" data-tauri-drag-region>
       <BrandLogo :size="22" :radius="6" />
-      <span class="tb-name">高考志愿</span>
+      <span class="tb-name">高智愿</span>
       <span class="tb-sub">智能填报 · 冲稳保</span>
     </div>
     <div class="tb-ctrls">

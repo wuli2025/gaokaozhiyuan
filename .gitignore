@@ -29,6 +29,7 @@ conversations/
 _shot.png
 .dev-screenshot-*.png
 .dev-server.log
+vite.log
 /workspace/
 PolarisKB/.polaris_seeded
 

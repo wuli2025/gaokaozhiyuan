@@ -4,6 +4,7 @@ import { convApi } from "../tauri";
 import { useChatStore } from "../stores/chat";
 import { useAppStore } from "../stores/app";
 import { useProfileStore } from "../stores/profile";
+import zhangxuefengKb from "../data/zhangxuefeng-kb.md?raw";
 
 const chatStore = useChatStore();
 const app = useAppStore();
@@ -16,8 +17,12 @@ interface Idol {
   field: string;
   major: string; // 对应高考专业方向
   persona: string; // 人格设定
+  knowledge?: string; // 压缩知识库:选中该偶像时整库注入 prompt
 }
 const IDOLS: Idol[] = [
+  { key: "zhangxuefeng", name: "张雪峰", avatar: "雪", field: "选科 · 就业", major: "物化优先 / 工科·医学·计算机等就业向",
+    persona: "夸克高考志愿官、志愿规划界顶流。说话犀利、接地气、爱抖包袱但句句往就业上落。核心三板斧：①选科别犯三种病——跟风扎堆物理、凭感觉哪科顺手选哪科、凭一时喜欢某老师某学科；要拿赋分排名和专业覆盖率说话。②物化是王道：物化生专业覆盖率超98%，2024新政『物化绑定』锁死理工农医，能扛住物理化学就尽量别放，放一科少一大片专业。③普通家庭孩子第一目标是就业吃饭，优先技术壁垒高的工科/医学/计算机，慎入无壁垒的纯文科天坑；选科是为未来专业兜底，不是为高考多考几分。",
+    knowledge: zhangxuefengKb },
   { key: "qianxuesen", name: "钱学森", avatar: "钱", field: "航天 · 国防", major: "航空航天 / 力学 / 自动化",
     persona: "中国航天之父，严谨、家国情怀深重，强调系统工程思维与基础理论功底。" },
   { key: "curie", name: "居里夫人", avatar: "居", field: "物理 · 化学", major: "物理学 / 化学 / 材料",
@@ -39,6 +44,7 @@ const IDOLS: Idol[] = [
 ];
 
 const selected = ref<Idol>(IDOLS[0]);
+const wallOpen = ref(true); // 顶部角色选择栏是否展开
 const input = ref("");
 const convId = ref<string | null>(null);
 const starting = ref(false);
@@ -86,14 +92,18 @@ function buildPrompt(userText: string): string {
   const prof = profile.ready
     ? `考生画像：${profile.province} · ${profile.track}类${profile.reselect.length ? "+" + profile.reselect.join("") : ""}，估分 ${profile.score ?? "?"} / 位次≈${profile.rank ?? "?"}。${asp ? "志向：" + asp + "。" : ""}`
     : "考生尚未建立完整档案。";
+  const kb = i.knowledge
+    ? `【你的知识库】以下是从你公开讲座蒸馏的方法论，回答须扎根于此、口径一致，不得脱离它瞎编（培训机构口径，年度数据需提醒考生按当年政策核实）：\n${i.knowledge}\n【知识库结束】`
+    : "";
   return [
     `你现在扮演「${i.name}」（${i.field}）。${i.persona}`,
-    `以其视角、口吻与价值观，和这位中国高考考生对话，帮他厘清专业与院校方向。`,
-    `这是基于公开资料的拟人演绎、非本人观点；只聊专业选择与人生方向，不杜撰史实、不算命。`,
+    kb,
+    `以其视角、口吻与价值观，和这位中国高考考生对话，帮他厘清选科、专业与院校方向。`,
+    `这是基于公开资料的拟人演绎、非本人观点；只聊选科与专业选择、人生方向，不杜撰史实、不算命。`,
     prof,
     `考生说：${userText}`,
-    `请以 ${i.name} 的身份回答（3–6 句，犀利、具体、可落地），结尾用一句话点出对应的高考专业方向（参考：${i.major}）。`,
-  ].join("\n");
+    `请以 ${i.name} 的身份回答（3–6 句，犀利、具体、可落地），结尾用一句话点出对应的选科组合或高考专业方向（参考：${i.major}）。`,
+  ].filter(Boolean).join("\n");
 }
 
 async function send() {
@@ -118,6 +128,7 @@ function scrollBottom() {
 
 function pickIdol(i: Idol) {
   selected.value = i;
+  wallOpen.value = false; // 选定后收起角色栏，让对话框唱主角
 }
 
 const SUGGEST = [
@@ -130,24 +141,32 @@ function useSuggest(s: string) { input.value = s; }
 
 <template>
   <div class="page">
-    <header class="ph">
-      <div class="eyebrow">★ 为“想成为谁”而来，被“该学什么”留下</div>
-      <h1>偶像对话</h1>
-      <p>选一位偶像来对标、与他对话，在交流中厘清你的理想专业与学校。基于公开资料的拟人演绎，非本人观点。</p>
-    </header>
-
-    <div class="idolwall">
-      <button
-        v-for="i in IDOLS"
-        :key="i.key"
-        class="idol"
-        :class="{ on: selected.key === i.key }"
-        @click="pickIdol(i)"
-      >
-        <span class="f">{{ i.avatar }}</span>
-        <b>{{ i.name }}</b>
-        <span class="fd">{{ i.field }}</span>
+    <div class="wall" :class="{ folded: !wallOpen }">
+      <button class="wall-bar" @click="wallOpen = !wallOpen">
+        <span class="wb-l">
+          <span class="wb-dot">{{ selected.avatar }}</span>
+          {{ wallOpen ? "选择一位偶像" : `当前偶像：${selected.name}` }}
+        </span>
+        <span class="wb-r">
+          {{ wallOpen ? "收起" : "切换偶像" }}
+          <svg class="chev" :class="{ up: wallOpen }" viewBox="0 0 24 24" width="15" height="15"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
       </button>
+      <div class="wall-body">
+        <div class="idolwall">
+          <button
+            v-for="i in IDOLS"
+            :key="i.key"
+            class="idol"
+            :class="{ on: selected.key === i.key }"
+            @click="pickIdol(i)"
+          >
+            <span class="f">{{ i.avatar }}</span>
+            <b>{{ i.name }}</b>
+            <span class="fd">{{ i.field }}</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="chatbox">
@@ -195,12 +214,21 @@ function useSuggest(s: string) { input.value = s; }
 </template>
 
 <style scoped>
-.page { height: 100vh; overflow-y: auto; max-width: 860px; margin: 0 auto; padding: 30px 28px 40px; display: flex; flex-direction: column; }
-.eyebrow { font-family: var(--mono); font-size: 11px; color: var(--gold-deep); font-weight: 700; letter-spacing: .18em; }
-.ph h1 { font-family: var(--serif); font-size: 27px; margin: 6px 0 0; color: var(--ink); }
-.ph p { color: var(--text-2); font-size: 13.5px; margin: 8px 0 20px; }
+.page { height: 100vh; overflow: hidden; width: 100%; margin: 0; padding: 16px 24px 18px; display: flex; flex-direction: column; }
 
-.idolwall { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 18px; }
+/* 可折叠角色选择栏 */
+.wall { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow-sm); overflow: hidden; }
+.wall-bar { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; background: var(--bg-soft); border: none; cursor: pointer; font-size: 13px; color: var(--ink); }
+.wall-bar:hover { background: var(--vermilion-soft); }
+.wb-l { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+.wb-dot { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, #c8372d, #e0644f); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: var(--serif); font-size: 13px; }
+.wb-r { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+.chev { transition: transform .22s; }
+.chev.up { transform: rotate(180deg); }
+.wall-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .26s ease, opacity .2s ease; }
+.wall.folded .wall-body { grid-template-rows: 0fr; opacity: 0; }
+.wall-body > .idolwall { overflow: hidden; min-height: 0; }
+.idolwall { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 14px; }
 .idol { border: 1px solid var(--border); border-radius: 14px; padding: 14px 6px; text-align: center; background: var(--panel); box-shadow: var(--shadow-sm); transition: .18s; }
 .idol:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
 .idol .f { width: 44px; height: 44px; border-radius: 50%; margin: 0 auto 7px; background: linear-gradient(135deg, #7a5a9a, #3a2440); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: var(--serif); font-size: 18px; }
@@ -215,7 +243,7 @@ function useSuggest(s: string) { input.value = s; }
 .cb-titles b { font-size: 14px; color: var(--ink); display: block; }
 .cb-titles span { font-size: 11.5px; color: var(--muted); }
 
-.cb-body { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 11px; min-height: 200px; max-height: 46vh; }
+.cb-body { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 11px; min-height: 240px; }
 .cb-empty { color: var(--muted); font-size: 13px; }
 .cb-empty p { margin: 0 0 12px; }
 .cb-empty b { color: var(--vermilion); }

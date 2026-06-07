@@ -368,40 +368,121 @@ pub fn kb_context_block() -> String {
 三层目录: `raw/`(只读原始资料, 严禁写入) · `output/`(生成的成品) · `wiki/`(人工确认的知识层)。\n\n"
     ));
 
-    // wiki/ 知识层: 全文注入 (很小, 是导航的起点; 顺着里面的双链继续展开)
-    let mut wiki_docs: Vec<&KbDoc> = idx
-        .iter()
-        .filter(|d| norm(&d.rel_path).starts_with("wiki/"))
-        .collect();
-    wiki_docs.sort_by(|a, b| a.rel_path.cmp(&b.rel_path));
-    if !wiki_docs.is_empty() {
-        out.push_str("#### wiki/ 知识层 (已全文注入, 请顺着其中的双链继续展开)\n\n");
-        for d in &wiki_docs {
-            out.push_str(&format!(
-                "##### [[{}]] · `{}`\n\n{}\n\n",
-                stem(&d.rel_path),
-                norm(&d.rel_path),
-                d.body.trim()
-            ));
+    // 整体注入预算: nav(wiki 索引) 60% + 地图 40%, 合计不超 KB_CTX_BUDGET。
+    // 无论库多大, 注入都被这条硬预算封顶 —— 配合 chat.rs 走 stdin, 彻底杜绝「撑爆」。
+    let nav_cap = out.len() + KB_CTX_BUDGET * 60 / 100;
+    // 一句话摘要: 跳过 frontmatter / 标题 / 引用 / 表格 / 代码栏, 取首个正文行并截断。
+    let oneliner = |body: &str| -> String {
+        let mut in_fm = false;
+        for (i, raw) in body.lines().enumerate() {
+            let line = raw.trim();
+            if i == 0 && line == "---" {
+                in_fm = true;
+                continue;
+            }
+            if in_fm {
+                if line == "---" {
+                    in_fm = false;
+                }
+                continue;
+            }
+            if line.is_empty()
+                || line.starts_with('#')
+                || line.starts_with('>')
+                || line.starts_with("---")
+                || line.starts_with('|')
+                || line.starts_with("```")
+            {
+                continue;
+            }
+            let s: String = line.chars().take(72).collect();
+            return if line.chars().count() > 72 {
+                format!("{s}…")
+            } else {
+                s
+            };
         }
+        String::new()
+    };
+
+    // wiki/ 知识层: 「索引注入」—— 每页一句话摘要 + 双链, 整页用 Read 按需打开。
+    // (旧版把每页前 1800 字塞进去, 前十几页就吃满 24K、后几十页连标题都进不来;
+    //  改为一句话摘要后, 全部页都能进索引、模型沿双链 Read 取全文, 既全又省。)
+    use std::collections::BTreeMap;
+    let mut wiki_groups: BTreeMap<String, Vec<&KbDoc>> = BTreeMap::new();
+    for d in idx.iter() {
+        let rp = norm(&d.rel_path);
+        if !rp.starts_with("wiki/") {
+            continue;
+        }
+        let sub = rp.strip_prefix("wiki/").unwrap_or(&rp);
+        let group = if sub.contains('/') {
+            sub.split('/').next().unwrap_or("_").to_string()
+        } else {
+            "_".to_string()
+        };
+        wiki_groups.entry(group).or_default().push(d);
+    }
+    if !wiki_groups.is_empty() {
+        out.push_str(
+            "#### wiki/ 知识层索引 (标题+摘要; 整页请用 `Read` 打开, 沿 `[[双链]]` 续读取证)\n\n",
+        );
+        'wiki: for (group, docs) in &wiki_groups {
+            out.push_str(&format!("- **{}/** ({} 篇)\n", group, docs.len()));
+            for d in docs {
+                if out.len() > nav_cap {
+                    out.push_str("  - …(wiki 索引达预算, 其余用 `Glob \"wiki/**\"` / `Grep` 列出)\n");
+                    break 'wiki;
+                }
+                let title = if d.title.trim().is_empty() {
+                    stem(&d.rel_path)
+                } else {
+                    d.title.trim().to_string()
+                };
+                let ol = oneliner(&d.body);
+                if ol.is_empty() {
+                    out.push_str(&format!(
+                        "  - [[{}]] — {} · `{}`\n",
+                        stem(&d.rel_path),
+                        title,
+                        norm(&d.rel_path)
+                    ));
+                } else {
+                    out.push_str(&format!(
+                        "  - [[{}]] — {} · {} · `{}`\n",
+                        stem(&d.rel_path),
+                        title,
+                        ol,
+                        norm(&d.rel_path)
+                    ));
+                }
+            }
+        }
+        out.push('\n');
     }
 
     // 知识库地图: raw/ output/ 等按文件夹分组, 列标题清单 (供沿双链/路径用 Read/Grep 自取)
-    use std::collections::BTreeMap;
     let mut groups: BTreeMap<String, Vec<&KbDoc>> = BTreeMap::new();
     for d in idx.iter() {
         let rp = norm(&d.rel_path);
         if rp == "CLAUDE.md" || rp.starts_with("wiki/") {
-            continue; // 行为指南单独注入; wiki 已全文给过
+            continue; // 行为指南单独注入; wiki 已索引注入
         }
         groups.entry(parent(&rp)).or_default().push(d);
     }
     if !groups.is_empty() {
         out.push_str("#### 知识库地图 (沿双链 `[[名称]]` 或路径, 用 Read / Grep 自取原文)\n\n");
-        const MAX_PER_FOLDER: usize = 60;
-        for (folder, docs) in &groups {
+        const MAX_PER_FOLDER: usize = 40;
+        'map: for (folder, docs) in &groups {
+            if out.len() > KB_CTX_BUDGET {
+                out.push_str("- …(地图达 24K 预算上限, 其余用 `Glob` / `Grep` 关键词列出)\n");
+                break;
+            }
             out.push_str(&format!("- **{}/** ({} 篇)\n", folder, docs.len()));
             for d in docs.iter().take(MAX_PER_FOLDER) {
+                if out.len() > KB_CTX_BUDGET {
+                    break 'map;
+                }
                 let title = if d.title.trim().is_empty() {
                     stem(&d.rel_path)
                 } else {

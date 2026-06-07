@@ -31,7 +31,7 @@ async function pickFolder() {
   const picked = await open({
     directory: true,
     multiple: false,
-    title: "选择 高考志愿 工作文件夹",
+    title: "选择 高智愿 工作文件夹",
   });
   if (typeof picked === "string" && picked) {
     draft.value = picked;
@@ -72,9 +72,9 @@ async function finish() {
 
       <!-- 第一步：欢迎 -->
       <template v-if="step === 1">
-        <h1 class="title">欢迎来到高考志愿助手</h1>
+        <h1 class="title">欢迎来到高智愿</h1>
         <p class="lead">
-          高考志愿助手是一个本地优先的 AI 工作台。你的对话、知识库与生成的成品，
+          高智愿是一个本地优先的 AI 工作台。你的对话、知识库与生成的成品，
           都会安放在<strong>你自己的电脑</strong>上一个叫「工作文件夹」的地方。
         </p>
         <p class="lead dim">

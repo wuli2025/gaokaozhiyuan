@@ -72,6 +72,7 @@ pub fn run() {
             sql_tool::gk_score_to_rank,
             sql_tool::gk_match,
             sql_tool::gk_school_detail,
+            sql_tool::gk_group_majors,
             // Conv (项目 + 对话历史)
             conv::conv_list_projects,
             conv::conv_create_project,

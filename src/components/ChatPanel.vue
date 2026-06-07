@@ -35,6 +35,7 @@ import { marked } from "marked";
 import { useAppStore } from "../stores/app";
 import { useArtifactsStore } from "../stores/artifacts";
 import { useChatStore, type Bubble } from "../stores/chat";
+import { useProfileStore } from "../stores/profile";
 import { useFileDrop } from "../composables/useFileDrop";
 
 function fileName(path: string): string {
@@ -61,6 +62,7 @@ function artifactIcon(path: string) {
 const app = useAppStore();
 const artifactsStore = useArtifactsStore();
 const chatStore = useChatStore();
+const profile = useProfileStore();
 
 /** 点击成品文件 chip → 展开右侧抽屉并预览 */
 function openArtifact(path: string) {
@@ -310,9 +312,22 @@ async function send() {
 
   input.value = "";
   attachments.value = [];
+  // 学生画像快照：后端据此跑「智能填报锁池」，把可报志愿池作为事实注入模型。
+  // 画像就绪才传（否则后端不会注入，避免半填误导）。
+  const profileSnapshot = profile.ready
+    ? {
+        province: profile.province,
+        track: profile.track,
+        subjects: profile.reselect,
+        score: profile.score,
+        rank: profile.rank,
+        aspiration: profile.aspiration,
+      }
+    : undefined;
   // 交给 chat store：推 user 气泡 + 调后端 + 记录 reqId/sending（按对话 id，多开）
   await chatStore.send(convId, prompt, display, attached, {
     permissionMode: permMode.value,
+    profile: profileSnapshot,
   });
 }
 

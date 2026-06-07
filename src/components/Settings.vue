@@ -108,7 +108,7 @@ function useDefault() {
 <template>
   <div class="settings">
     <header class="head">
-      <div class="eyebrow">★ 高考志愿 · 设置</div>
+      <div class="eyebrow">★ 高智愿 · 设置</div>
       <h1>个性化与工作台</h1>
       <p class="sub">配置外观主题与本地路径，让工作台更贴合你的使用习惯。</p>
     </header>

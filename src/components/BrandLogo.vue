@@ -7,7 +7,7 @@ withDefaults(defineProps<{ size?: number; radius?: number }>(), {
 </script>
 
 <template>
-  <svg :width="size" :height="size" viewBox="0 0 100 100" class="brand-logo" aria-label="高考志愿">
+  <svg :width="size" :height="size" viewBox="0 0 100 100" class="brand-logo" aria-label="高智愿">
     <defs>
       <linearGradient id="bl-red" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#e0483b" />

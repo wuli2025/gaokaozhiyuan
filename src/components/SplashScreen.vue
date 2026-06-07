@@ -69,7 +69,7 @@ onBeforeUnmount(() => {
       <p class="line l2">看清位次，选对方向，不负所愿</p>
     </div>
 
-    <div class="wordmark">高考志愿 · 智能填报</div>
+    <div class="wordmark">高智愿 · 智能填报</div>
     <div class="hint">点击任意处进入</div>
   </div>
 </template>

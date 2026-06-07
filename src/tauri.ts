@@ -180,7 +180,14 @@ export interface GkSchoolDetail {
     min_rank: number | null;
     min_score: number | null;
     group_code: string | null;
+    year: number;
   }>;
+  years: number[];
+}
+
+export interface GkGroupMajors {
+  majors: Array<{ major: string; plan_count: number | null }>;
+  plan_year: number | null;
 }
 
 export const gk = {
@@ -194,6 +201,8 @@ export const gk = {
     invoke<GkMatchResult>("gk_match", { args: args as unknown as Record<string, unknown> }),
   schoolDetail: (name: string, province: string, track: string) =>
     invoke<GkSchoolDetail>("gk_school_detail", { args: { name, province, track } }),
+  groupMajors: (name: string, group_code: string, year: number) =>
+    invoke<GkGroupMajors>("gk_group_majors", { args: { name, group_code, year } }),
   lookupMajor: (keyword: string) =>
     invoke<Array<{ major_code: string; name: string; category: string; subcategory: string; degree: string }>>(
       "sql_tool_lookup_major",
@@ -227,6 +236,8 @@ export interface ChatSendArgs {
   consultMao?: boolean;
   /** 「一键整理个人 wiki」：读个人档案+画像，生成结构化考试报告写入 wiki/students/。 */
   genReport?: boolean;
+  /** 学生画像快照（province/track/subjects/score/rank/aspiration）。后端据此跑智能填报锁池注入。 */
+  profile?: Record<string, unknown>;
 }
 
 export interface ChatStreamEvent {
@@ -621,11 +632,22 @@ function browserStub(cmd: string, _args?: Record<string, unknown>): unknown {
       const a = (_args?.args as any) || {};
       return {
         info: { name: a.name ?? "同济大学", city: "杨浦区", is985: true, is211: true, double_first: "双一流", is_c9: false, is_central: true, school_type: "综合", dept: "教育部" },
-        majors: Array.from({ length: 12 }, (_, i) => ({
-          major: ["计算机类", "土木类", "建筑学", "临床医学", "经济管理试验班", "数学类"][i % 6],
-          subject_group: a.track === "历史" ? "首选历史，再选不限" : "首选物理，再选化学",
-          min_rank: 5000 + i * 600, min_score: 640 - i * 3, group_code: null,
-        })),
+        years: [2024, 2023, 2022],
+        majors: [2024, 2023, 2022].flatMap((yr, yi) =>
+          Array.from({ length: 6 }, (_, i) => ({
+            major: ["计算机类", "土木类", "建筑学", "临床医学", "经济管理试验班", "数学类"][i],
+            subject_group: a.track === "历史" ? "首选历史，再选不限" : "首选物理，再选化学",
+            min_rank: 5000 + i * 600 + yi * 400, min_score: 640 - i * 3 - yi * 2, group_code: null, year: yr,
+          }))
+        ),
+      };
+    }
+    case "gk_group_majors": {
+      const a = (_args?.args as any) || {};
+      const pool = ["电子信息工程技术", "云计算技术应用", "人工智能技术应用", "大数据技术", "信息安全技术应用", "工业互联网技术"];
+      return {
+        plan_year: (a.year ?? 2025) >= 2025 ? 2024 : a.year ?? 2024,
+        majors: pool.slice(0, 3 + ((Number(a.group_code) || 0) % 4)).map((m, i) => ({ major: m, plan_count: 30 - i * 4 })),
       };
     }
     case "kb_graph":

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch, onUnmounted } from "vue";
 
 type TagType = "red" | "gold" | "green";
 interface Truth {
@@ -254,6 +254,18 @@ const ROWS = [
   { key: "pros", lab: "前景", cls: "pros" },
   { key: "fit", lab: "适合", cls: "fit" },
 ] as const;
+
+// 选中的真相卡 → 弹出详情
+const selected = ref<Truth | null>(null);
+function open(t: Truth) { selected.value = t; }
+function close() { selected.value = null; }
+
+function onKey(e: KeyboardEvent) { if (e.key === "Escape") close(); }
+watch(selected, (v) => {
+  if (v) window.addEventListener("keydown", onKey);
+  else window.removeEventListener("keydown", onKey);
+});
+onUnmounted(() => window.removeEventListener("keydown", onKey));
 </script>
 
 <template>
@@ -272,18 +284,48 @@ const ROWS = [
     <div class="count-line">共 {{ list.length }} 张真相卡 · 证据源自载望升学资料（专业篇/就业方向篇/职业规划篇/答疑篇）</div>
 
     <div class="card-grid">
-      <article v-for="t in list" :key="t.name" class="truth">
+      <article
+        v-for="t in list"
+        :key="t.name"
+        class="truth"
+        role="button"
+        tabindex="0"
+        @click="open(t)"
+        @keydown.enter="open(t)"
+        @keydown.space.prevent="open(t)"
+      >
         <div class="th">
           <span class="th-name">{{ t.name }}</span>
           <span class="pill" :class="t.tagType">{{ t.tag }}</span>
         </div>
         <div class="bd">
-          <p v-for="r in ROWS" :key="r.key">
-            <span class="k" :class="r.cls">{{ r.lab }}</span>{{ (t as any)[r.key] }}
-          </p>
+          <p class="teaser"><span class="k fan">幻想</span>{{ t.fan }}</p>
+          <p class="teaser"><span class="k real">真相</span>{{ t.real }}</p>
         </div>
+        <div class="more">点开看详情 · 规划/前景/适合 →</div>
       </article>
     </div>
+
+    <!-- 详情弹窗 -->
+    <transition name="fade">
+      <div v-if="selected" class="overlay" @click.self="close">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="x" @click="close" aria-label="关闭">×</button>
+          <div class="m-head">
+            <span class="m-cat">{{ selected.cat }}</span>
+            <h2>{{ selected.name }}</h2>
+            <span class="pill" :class="selected.tagType">{{ selected.tag }}</span>
+          </div>
+          <div class="m-body">
+            <div v-for="r in ROWS" :key="r.key" class="m-row">
+              <span class="m-lab" :class="r.cls">{{ r.lab }}</span>
+              <p class="m-txt">{{ (selected as any)[r.key] }}</p>
+            </div>
+          </div>
+          <div class="m-foot">证据源自载望升学资料 · 专业篇/就业方向篇/职业规划篇/答疑篇</div>
+        </div>
+      </div>
+    </transition>
 
     <div class="three-truth">
       <div class="tt-card"><h4>① 别被名字骗</h4><p>“生物医学工程”不是医生、“信息与计算科学”是数学、“精算”门槛极高——名字光鲜 ≠ 出路光鲜。先看真实就业，再谈兴趣。</p></div>
@@ -310,8 +352,9 @@ const ROWS = [
 .count-line { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
 
 .card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-.truth { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: transform .18s, box-shadow .18s; }
-.truth:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.truth { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: transform .18s, box-shadow .18s, border-color .18s; cursor: pointer; }
+.truth:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--gold-deep); }
+.truth:focus-visible { outline: 2px solid var(--gold-deep); outline-offset: 2px; }
 .th { padding: 11px 15px; background: var(--bg-soft); font-weight: 800; color: var(--ink); display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); }
 .th-name { font-size: 14.5px; font-family: var(--serif); }
 .pill { font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; }
@@ -320,12 +363,36 @@ const ROWS = [
 .pill.green { background: var(--green-soft); color: var(--green); border-color: #c4e2cf; }
 .bd { padding: 12px 15px; font-size: 12.8px; line-height: 1.7; flex: 1; color: var(--text-2); }
 .bd p { margin: 6px 0; }
+.bd .teaser { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .bd .k { display: inline-block; min-width: 38px; font-weight: 800; margin-right: 6px; }
 .bd .k.fan { color: var(--gold-deep); }
 .bd .k.real { color: var(--red-deep); }
 .bd .k.plan { color: var(--blue); }
 .bd .k.pros { color: var(--green); }
 .bd .k.fit { color: var(--purple); }
+.more { padding: 8px 15px 11px; font-size: 11.5px; font-weight: 700; color: var(--gold-deep); border-top: 1px dashed var(--border); }
+
+/* 详情弹窗 */
+.overlay { position: fixed; inset: 0; z-index: 60; background: rgba(20,12,8,.5); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.modal { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 18px; width: 100%; max-width: 620px; max-height: 86vh; overflow-y: auto; box-shadow: 0 24px 60px -16px rgba(0,0,0,.45); }
+.x { position: absolute; top: 12px; right: 14px; width: 30px; height: 30px; border: none; border-radius: 8px; background: var(--bg-soft); color: var(--text-2); font-size: 20px; line-height: 1; cursor: pointer; }
+.x:hover { background: var(--border); color: var(--ink); }
+.m-head { padding: 22px 24px 16px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.m-cat { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .1em; }
+.m-head h2 { width: 100%; margin: 2px 0 0; font-family: var(--serif); font-size: 22px; color: var(--ink); order: 2; }
+.m-head .pill { order: 3; }
+.m-body { padding: 18px 24px 6px; }
+.m-row { display: flex; gap: 12px; margin-bottom: 16px; }
+.m-lab { flex: none; width: 44px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; font-size: 12px; font-weight: 800; color: #fff; }
+.m-lab.fan { background: var(--gold-deep); }
+.m-lab.real { background: var(--red-deep); }
+.m-lab.plan { background: var(--blue); }
+.m-lab.pros { background: var(--green); }
+.m-lab.fit { background: var(--purple); }
+.m-txt { margin: 2px 0 0; font-size: 13.5px; line-height: 1.8; color: var(--text-1, var(--ink)); }
+.m-foot { padding: 12px 24px 20px; font-size: 11.5px; color: var(--muted); }
+.fade-enter-active, .fade-leave-active { transition: opacity .2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 
 .three-truth { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 24px; }
 .tt-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow-sm); }
