@@ -76,3 +76,50 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  # ───────────────────────────────────────────────────────────
+  # 汇总 latest.json（自动更新清单）
+  # 矩阵里三个 job 并行上传时会互相清掉对方的 latest.json（tauri-action 已知坑），
+  # 结果 releases/latest/download/latest.json 404、自动更新失效。
+  # 这里在三平台构建全部完成后，从各自的 .sig 重建一份合并清单，覆盖上传，保证自愈。
+  # ───────────────────────────────────────────────────────────
+  updater-manifest:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Rebuild & upload merged latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          VER="${TAG#v}"
+          DIR="$(mktemp -d)"
+          gh release download "$TAG" -R "$REPO" -p '*.sig' -D "$DIR"
+          base="https://github.com/$REPO/releases/download/$TAG"
+
+          arm_sig_file=$(ls "$DIR"/*aarch64.app.tar.gz.sig)
+          x64_sig_file=$(ls "$DIR"/*_x64.app.tar.gz.sig)
+          win_sig_file=$(ls "$DIR"/*-setup.exe.sig)
+
+          arm_name="$(basename "${arm_sig_file%.sig}")"
+          x64_name="$(basename "${x64_sig_file%.sig}")"
+          win_name="$(basename "${win_sig_file%.sig}")"
+
+          jq -n \
+            --arg ver "$VER" \
+            --arg pd  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg as  "$(cat "$arm_sig_file")" --arg au "$base/$arm_name" \
+            --arg xs  "$(cat "$x64_sig_file")" --arg xu "$base/$x64_name" \
+            --arg ws  "$(cat "$win_sig_file")" --arg wu "$base/$win_name" \
+            '{version:$ver, notes:("高智愿 " + $ver + " 自动更新"), pub_date:$pd,
+              platforms:{
+                "darwin-aarch64":{signature:$as,url:$au},
+                "darwin-x86_64":{signature:$xs,url:$xu},
+                "windows-x86_64":{signature:$ws,url:$wu}}}' > latest.json
+
+          cat latest.json
+          gh release upload "$TAG" -R "$REPO" latest.json --clobber
