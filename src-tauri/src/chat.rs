@@ -689,6 +689,7 @@ fn spawn_on_host(prompt: &str, perm: &str, art_dir: &Path) -> Result<Child, Stri
         .stdin(Stdio::piped()) // prompt 经此管道写入, 见下
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    crate::doctor::augment_path(&mut cmd); // macOS GUI 极简 PATH: 补 claude 及其子进程(git/rg…)所需目录
     no_window(&mut cmd); // 隐藏式: 每次发消息不再弹出黑色终端窗口
     let mut child = cmd
         .spawn()

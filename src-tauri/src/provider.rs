@@ -40,6 +40,17 @@ const MANAGED_ENV_KEYS: &[&str] = &[
     "DISABLE_AUTOUPDATER",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
     "CLAUDE_CODE_EFFORT_LEVEL",
+    // 「粉丝福利」MiniMax 的模型路由 / 超时 / 流量开关 —— 切换走必须一并清掉,
+    // 否则 MiniMax-M2.7/M3 等模型名会泄漏到下一家供应商导致 404。
+    "API_TIMEOUT_MS",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+    "ANTHROPIC_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME",
 ];
 const MANAGED_TOP_KEYS: &[&str] = &["attribution", "includeCoAuthoredBy"];
 
@@ -57,6 +68,8 @@ struct Preset {
 }
 
 const PRESETS: &[Preset] = &[
+    // 小白友好：MiniMax 置顶为列表第一项（粉丝福利·预置额度·开箱即用）。
+    Preset { id: "minimax", name: "MiniMax", base_url: "https://api.minimaxi.com/anthropic", token_field: DEFAULT_TOKEN_FIELD, category: "cn_official", kind: "key" },
     Preset { id: "claude-official", name: "Claude 官方", base_url: "", token_field: DEFAULT_TOKEN_FIELD, category: "official", kind: "official" },
     Preset { id: "shengsuanyun", name: "胜算云", base_url: "https://router.shengsuanyun.com/api", token_field: DEFAULT_TOKEN_FIELD, category: "aggregator", kind: "key" },
     Preset { id: "patewayai", name: "PatewayAI", base_url: "https://api.pateway.ai", token_field: API_KEY_FIELD, category: "third_party", kind: "key" },
@@ -77,7 +90,6 @@ const PRESETS: &[Preset] = &[
     Preset { id: "modelscope", name: "ModelScope 魔搭", base_url: "https://api-inference.modelscope.cn", token_field: DEFAULT_TOKEN_FIELD, category: "aggregator", kind: "key" },
     Preset { id: "kat-coder", name: "KAT-Coder", base_url: "https://vanchin.streamlake.ai/api/gateway/v1/endpoints/${ENDPOINT_ID}/claude-code-proxy", token_field: DEFAULT_TOKEN_FIELD, category: "cn_official", kind: "key" },
     Preset { id: "longcat", name: "LongCat", base_url: "https://api.longcat.chat/anthropic", token_field: DEFAULT_TOKEN_FIELD, category: "cn_official", kind: "key" },
-    Preset { id: "minimax", name: "MiniMax", base_url: "https://api.minimaxi.com/anthropic", token_field: DEFAULT_TOKEN_FIELD, category: "cn_official", kind: "key" },
     Preset { id: "minimax-en", name: "MiniMax en", base_url: "https://api.minimax.io/anthropic", token_field: DEFAULT_TOKEN_FIELD, category: "cn_official", kind: "key" },
     Preset { id: "bailing", name: "百灵 BaiLing", base_url: "https://api.tbox.cn/api/anthropic", token_field: DEFAULT_TOKEN_FIELD, category: "cn_official", kind: "key" },
     Preset { id: "aihubmix", name: "AiHubMix", base_url: "https://aihubmix.com", token_field: API_KEY_FIELD, category: "aggregator", kind: "key" },
@@ -198,6 +210,29 @@ struct Store {
 static STORE: Lazy<RwLock<Store>> = Lazy::new(|| RwLock::new(Store::default()));
 static STORE_PATH: Lazy<RwLock<PathBuf>> = Lazy::new(|| RwLock::new(PathBuf::new()));
 
+/// 「粉丝福利」MiniMax 的完整默认配置：基址 + token + 模型路由(M2.7 主 / M3 兜底)
+/// + 超长超时 + 关闭非必要流量 + 关闭协作署名。token 走构建期注入的 gift key, 不落源码。
+/// 切换走时这些 env 由 MANAGED_ENV_KEYS 统一清理, 不会污染别家供应商。
+fn gift_minimax_config(key: &str) -> Value {
+    json!({
+        "env": {
+            "ANTHROPIC_BASE_URL": "https://api.minimaxi.com/anthropic",
+            "ANTHROPIC_AUTH_TOKEN": key,
+            "API_TIMEOUT_MS": "3000000",
+            // env 值必须是字符串(settings.json env 是 Record<string,string>), 裸数字会被拒/忽略。
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+            "ANTHROPIC_MODEL": "MiniMax-M2.7",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M3",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M3",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M3",
+            "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME": "MiniMax-M3",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME": "MiniMax-M3",
+            "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME": "MiniMax-M3"
+        },
+        "includeCoAuthoredBy": false
+    })
+}
+
 /// 还原构建期注入的「粉丝福利」MiniMax key。
 /// 二进制内为 XOR 混淆字节, 此处解出明文; 未注入(本地 dev 构建)时返回空串。
 /// 提醒: 客户端解密逻辑随包一起分发, 混淆只是延缓提取, 不构成真正保护。
@@ -233,18 +268,57 @@ fn seed_gift_minimax(store: &mut Store, data_dir: &Path) -> bool {
     if store.items.iter().any(|i| i.id == "minimax") {
         return false;
     }
+    let cfg = gift_minimax_config(&key);
     store.items.push(StoredProvider {
         id: "minimax".to_string(),
         name: "MiniMax".to_string(),
         note: "粉丝福利 · 预置额度，开箱即用".to_string(),
         website_url: "https://www.minimaxi.com".to_string(),
         token_field: DEFAULT_TOKEN_FIELD.to_string(),
-        settings_config: default_config(
-            "https://api.minimaxi.com/anthropic",
-            DEFAULT_TOKEN_FIELD,
-            &key,
-        ),
+        settings_config: cfg.clone(),
     });
+
+    // 小白友好：首启即把 MiniMax 设为默认启用供应商，开箱即用、无需手动配 key。
+    // 但仅当用户尚未配置任何第三方供应商(还在 Claude 官方 / settings.json 空)时才接管,
+    // 已自配 base_url 的老用户保持原样、不打扰。
+    let live = read_live_env();
+    let live_base = live
+        .get("ANTHROPIC_BASE_URL")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if live_base.is_empty() {
+        store.current_id = "minimax".to_string();
+        let _ = apply_settings_config(&cfg);
+    }
+    true
+}
+
+/// 老版本只种了 `base+token` 的「粉丝福利」MiniMax —— 升级成带模型路由(M2.7/M3)的新配置。
+/// 与 `.gift_minimax_seeded` marker **解耦**: marker 只防重复播种, 拦不住「已播种用户需要刷新配置」。
+/// 只动 note 标记为粉丝福利、且 env 里缺 `ANTHROPIC_MODEL` 的那一条;
+/// 用户自配的 minimax(note 不含粉丝福利) 与已是新配置的, 一律不碰。返回是否升级了。
+fn upgrade_gift_minimax(store: &mut Store) -> bool {
+    let key = gift_minimax_key();
+    if key.is_empty() {
+        return false;
+    }
+    let Some(item) = store.items.iter_mut().find(|i| i.id == "minimax") else {
+        return false;
+    };
+    if !item.note.contains("粉丝福利") {
+        return false; // 用户自配的, 不替换其 key/配置
+    }
+    let has_model = item
+        .settings_config
+        .get("env")
+        .and_then(|e| e.get("ANTHROPIC_MODEL"))
+        .is_some();
+    if has_model {
+        return false; // 已是新配置
+    }
+    item.settings_config = gift_minimax_config(&key);
     true
 }
 
@@ -309,9 +383,24 @@ pub fn init(_app: &AppHandle) -> Result<()> {
 
     // 首启一次性种「粉丝福利」MiniMax(含构建期注入的 key)。
     let gifted = seed_gift_minimax(&mut store, &dir);
+    // 老粉丝(已播种)升级到带模型路由的新配置 —— 与 marker 解耦, 否则永远刷不到。
+    let upgraded = upgrade_gift_minimax(&mut store);
+    // 若用户此刻正用着粉丝福利 MiniMax, 把新模型路由刷进 live settings.json, 立即生效。
+    if upgraded {
+        let on_minimax = read_live_env()
+            .get("ANTHROPIC_BASE_URL")
+            .and_then(|v| v.as_str())
+            .map(|s| normalize_url(s) == "https://api.minimaxi.com/anthropic")
+            .unwrap_or(false);
+        if on_minimax {
+            if let Some(item) = store.items.iter().find(|i| i.id == "minimax") {
+                let _ = apply_settings_config(&item.settings_config.clone());
+            }
+        }
+    }
 
     *STORE.write() = store;
-    if migrated || gifted {
+    if migrated || gifted || upgraded {
         persist();
     }
     Ok(())

@@ -44,6 +44,9 @@ pub fn run() {
                 .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
             provider::init(h)
                 .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
+            // 小白零配置: 首启后台静默把 Claude Code 装上 (Windows·一次性·缺则装)。
+            // 不阻塞启动; 守卫与 marker 见 doctor::auto_bootstrap_claude。
+            doctor::auto_bootstrap_claude(h.clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -105,6 +108,15 @@ pub fn run() {
             provider::usage_summary,
             provider::codex_status,
             provider::codex_login,
+            // 环境医生 (Claude Code / PowerShell 7 / Node 探测 + 安装 + PATH 修复)
+            doctor::env_check,
+            doctor::env_fix_path,
+            doctor::env_install_claude,
+            doctor::env_install_node,
+            doctor::env_install_pwsh,
+            doctor::env_claude_update_check,
+            doctor::env_update_claude,
+            doctor::env_cancel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running 高考志愿助手 application");

@@ -135,6 +135,99 @@ fn home_dir() -> Option<PathBuf> {
     directories::UserDirs::new().map(|u| u.home_dir().to_path_buf())
 }
 
+// ───────────────────────── macOS / Linux PATH 救济 ─────────────────────────
+//
+// macOS 上从 Finder/Dock 启动的 GUI 应用只继承极简 launchd PATH
+// (`/usr/bin:/bin:/usr/sbin:/sbin`), **不会**加载用户 login shell 的
+// ~/.zshrc / ~/.zprofile / ~/.bash_profile —— 于是 npm / Homebrew / 官方原生脚本
+// 装到 /usr/local/bin、/opt/homebrew/bin、~/.local/bin、npm 全局 bin、nvm 目录里的
+// `claude` 全都 `which` 不到、裸名也 spawn 不起来, 表现为「对话/智能选科起不来」。
+//
+// 修法: ① 列出常见 bin 目录直接作候选; ② 向用户 login shell 问出真实 PATH 并并入,
+// 兜住 nvm / 自定义前缀等; 二者都用来 ① 补进探测/spawn 子进程的 PATH ② 派生候选路径。
+
+/// macOS/Linux 常见的 claude 落脚 bin 目录 (存在的才留)。
+#[cfg(not(windows))]
+fn unix_common_bin_dirs() -> Vec<PathBuf> {
+    let mut v = vec![
+        PathBuf::from("/usr/local/bin"),  // Homebrew (Intel) / 手装
+        PathBuf::from("/opt/homebrew/bin"), // Homebrew (Apple Silicon)
+        PathBuf::from("/usr/bin"),
+    ];
+    if let Some(h) = home_dir() {
+        v.push(h.join(".local").join("bin")); // 官方原生安装脚本
+        v.push(h.join(".npm-global").join("bin")); // 自定义 npm 前缀常用名
+        v.push(h.join("bin"));
+    }
+    v.into_iter().filter(|p| p.exists()).collect()
+}
+
+/// 向用户的 login shell 问出它真实的 PATH (GUI 进程拿不到 ~/.zshrc 里配的那份)。
+/// 形如 `zsh -ilc 'printf %s "$PATH"'`。失败 / 空 → None。
+#[cfg(not(windows))]
+fn login_shell_path() -> Option<String> {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+    let mut c = Command::new(&shell);
+    // -i 交互式以加载完整 rc, -l login 以加载 profile, -c 执行后退出。
+    c.args(["-ilc", "printf '%s' \"$PATH\""]);
+    c.stdin(Stdio::null());
+    no_window(&mut c);
+    let out = c.output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
+/// 计算一份「有效 PATH」: 当前进程 PATH + login shell PATH + 常见 bin 目录, 去重保序。
+/// 探测 (`which` / `npm`) 与最终 spawn claude 都用它, 修正 macOS GUI 极简 PATH。带缓存。
+#[cfg(not(windows))]
+static EFFECTIVE_PATH_CACHE: once_cell::sync::Lazy<Mutex<Option<std::ffi::OsString>>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(None));
+
+#[cfg(not(windows))]
+fn effective_path() -> std::ffi::OsString {
+    if let Some(p) = EFFECTIVE_PATH_CACHE.lock().as_ref() {
+        return p.clone();
+    }
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    // 当前进程已有的 (含 launchd 极简那几项)
+    if let Some(cur) = std::env::var_os("PATH") {
+        dirs.extend(std::env::split_paths(&cur));
+    }
+    // login shell 的真实 PATH (nvm / 自定义前缀都在这)
+    if let Some(sp) = login_shell_path() {
+        dirs.extend(std::env::split_paths(&sp));
+    }
+    // 常见兜底目录
+    dirs.extend(unix_common_bin_dirs());
+    // 去重保序
+    let mut seen = std::collections::HashSet::new();
+    dirs.retain(|p| !p.as_os_str().is_empty() && seen.insert(p.clone()));
+    let joined = std::env::join_paths(&dirs)
+        .unwrap_or_else(|_| std::env::var_os("PATH").unwrap_or_default());
+    *EFFECTIVE_PATH_CACHE.lock() = Some(joined.clone());
+    joined
+}
+
+/// 给即将 spawn 的子进程注入「有效 PATH」。Windows 上是 no-op
+/// (Windows 的 PATH 由用户 PATH 注册表逻辑维护, 见本文件下方)。
+pub fn augment_path(cmd: &mut Command) {
+    #[cfg(not(windows))]
+    {
+        cmd.env("PATH", effective_path());
+    }
+    #[cfg(windows)]
+    {
+        let _ = cmd;
+    }
+}
+
 fn to_fwd(p: &std::path::Path) -> String {
     p.to_string_lossy().replace('\\', "/")
 }
@@ -154,6 +247,7 @@ fn which_all(bin: &str) -> Vec<PathBuf> {
         c
     };
     cmd.stdin(Stdio::null());
+    augment_path(&mut cmd); // macOS GUI 极简 PATH 下补全常见 bin 目录
     no_window(&mut cmd);
     let out = match cmd.output() {
         Ok(o) => o,
@@ -189,6 +283,7 @@ fn probe_version(bin: &str, args: &[&str]) -> Option<String> {
         c
     };
     cmd.stdin(Stdio::null());
+    augment_path(&mut cmd); // macOS GUI 极简 PATH 下也能跑出版本号, 健康检查不误报「未安装」
     no_window(&mut cmd);
     let out = cmd.output().ok()?;
     let pick = |bytes: &[u8]| -> Option<String> {
@@ -223,6 +318,7 @@ fn npm_global_prefix() -> Option<PathBuf> {
         c
     };
     cmd.stdin(Stdio::null());
+    augment_path(&mut cmd); // macOS GUI 下 npm 本身也可能不在极简 PATH 里
     no_window(&mut cmd);
     let out = cmd.output().ok()?;
     if !out.status.success() {
@@ -264,6 +360,8 @@ fn claude_candidates() -> Vec<PathBuf> {
         v.push(npm_claude_native_exe(&prefix));
         v.push(prefix.join("claude.exe"));
         v.push(prefix.join("claude.cmd"));
+        // unix: npm 全局 bin 在 <prefix>/bin/claude
+        v.push(prefix.join("bin").join("claude"));
     }
     // 默认前缀兜底 (拿不到 `npm prefix -g` 时, 例如 npm 不在 PATH)
     if let Some(h) = home_dir() {
@@ -271,6 +369,20 @@ fn claude_candidates() -> Vec<PathBuf> {
         v.push(npm_claude_native_exe(&appdata_npm));
         v.push(appdata_npm.join("claude.cmd"));
         v.push(appdata_npm.join("claude.exe"));
+    }
+    // macOS/Linux 常见安装位置: GUI 极简 PATH 下 which 找不到, 直接列为候选。
+    // login shell PATH 里发现的 bin 目录也一并纳入 (兜住 nvm / 自定义前缀)。
+    #[cfg(not(windows))]
+    {
+        let mut dirs = unix_common_bin_dirs();
+        for d in std::env::split_paths(&effective_path()) {
+            if !dirs.contains(&d) {
+                dirs.push(d);
+            }
+        }
+        for d in dirs {
+            v.push(d.join("claude"));
+        }
     }
     v
 }
@@ -695,6 +807,61 @@ pub fn env_install_claude(app: AppHandle, method: Option<String>) -> Result<Stri
     let cmd = build_powershell(&inner);
     stream_install(app, req_id.clone(), cmd, true, "Claude Code");
     Ok(req_id)
+}
+
+// ───────────────────────── 首启自动安装 (小白零配置) ─────────────────────────
+
+/// 「已尝试自动安装」标记文件: `~/高考志愿/data/.claude_autoinstall_done`。
+/// 与 provider seed 同语义 —— 打过 marker 后即便用户卸载也不再自动重装, 尊重用户选择。
+fn autoinstall_marker() -> Option<PathBuf> {
+    home_dir().map(|h| h.join("高考志愿").join("data").join(".claude_autoinstall_done"))
+}
+
+/// npm 是否可用 (能跑出版本号)。auto bootstrap 只在有 npm 时静默装,
+/// 缺 npm 需先装 Node(winget/UAC), 不在启动期硬塞, 留给环境医生 UI 引导。
+fn npm_available() -> bool {
+    probe_version("npm", &["--version"]).is_some()
+}
+
+/// 首启自动安装 Claude Code —— 对应「默认帮小白把 Claude Code 装上」。
+/// 后台线程执行, **不阻塞 app 启动**。守卫层层把关, 力求「该装才装、只装一次」:
+/// - 仅 Windows (安装逻辑 Windows 专属);
+/// - claude 已就绪 → 直接跳过 (含 npm 全局已装但没上 PATH 的情形, resolve 能找到);
+/// - marker 已存在 → 跳过 (一次性, 不每次启动重试、不违逆用户卸载);
+/// - 无 npm → 跳过 (静默装 Node 要 winget+UAC, 不在启动期弹窗打扰)。
+/// 真正执行时复用既有 `stream_install` 管线: 走 npmmirror 国内镜像, 装完自动修 PATH +
+/// 清 spawn 解析缓存。进度照常通过 `env:stream` 事件推前端(没人监听则静默)。
+pub fn auto_bootstrap_claude(app: AppHandle) {
+    if !cfg!(windows) {
+        return;
+    }
+    std::thread::spawn(move || {
+        // 已就绪 → 无需安装
+        if resolve_claude_exe().is_some() {
+            return;
+        }
+        let Some(marker) = autoinstall_marker() else {
+            return;
+        };
+        if marker.exists() {
+            return;
+        }
+        // 没 npm 无法静默装 → 留给环境医生 UI (装 Node 需 winget/UAC, 不在启动期打扰)
+        if !npm_available() {
+            return;
+        }
+        // 不管后续成败都打 marker: 避免每次启动重试 + 尊重「用户日后卸载」。
+        if let Some(parent) = marker.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(&marker, b"attempted\n");
+
+        let inner = "npm install -g @anthropic-ai/claude-code \
+--registry=https://registry.npmmirror.com";
+        let req_id = next_req_id();
+        let cmd = build_powershell(inner);
+        stream_install(app, req_id, cmd, true, "Claude Code（首启自动安装）");
+    });
 }
 
 /// 安装 Node.js LTS (winget) —— npm 安装方式的前置依赖。
